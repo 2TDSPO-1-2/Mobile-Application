@@ -1,0 +1,1 @@
+// Camada de persistência local da aplicação
