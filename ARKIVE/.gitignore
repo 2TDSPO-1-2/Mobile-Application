@@ -1,0 +1,41 @@
+# Dependências
+node_modules/
+backend/node_modules/
+
+# Expo / React Native
+.expo/
+dist/
+web-build/
+
+# Backend build
+backend/dist/
+
+# Variáveis de ambiente
+.env
+.env.local
+.env.*.local
+backend/.env
+backend/.env.local
+backend/.env.*.local
+
+# Logs
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+pnpm-debug.log*
+
+# Certificados / chaves
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Arquivos de merge/conflito
+*.orig.*
+
+# Sistema operacional / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
