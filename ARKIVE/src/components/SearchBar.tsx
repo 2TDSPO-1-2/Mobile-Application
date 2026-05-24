@@ -1,0 +1,66 @@
+import React from 'react';
+import {
+  NativeSyntheticEvent,
+  StyleSheet,
+  TextInput,
+  TextInputSubmitEditingEventData,
+  View,
+} from 'react-native';
+import { useThemeColors } from '../hooks/useThemeColors';
+import { fontSize, radius, spacing } from '../styles/theme';
+
+interface Props {
+  value: string;
+  onChangeText: (text: string) => void;
+  placeholder?: string;
+  onSubmit?: () => void;
+}
+
+export function SearchBar({
+  value,
+  onChangeText,
+  placeholder = 'Pesquisar...',
+  onSubmit,
+}: Props) {
+  const colors = useThemeColors();
+
+  const handleSubmit = (
+    _event: NativeSyntheticEvent<TextInputSubmitEditingEventData>
+  ) => {
+    onSubmit?.();
+  };
+
+  return (
+    <View style={styles.wrap}>
+      <TextInput
+        value={value}
+        onChangeText={onChangeText}
+        placeholder={placeholder}
+        placeholderTextColor={colors.textSecondary}
+        returnKeyType="search"
+        onSubmitEditing={handleSubmit}
+        style={[
+          styles.input,
+          {
+            backgroundColor: colors.surface,
+            borderColor: colors.border,
+            color: colors.text,
+          },
+        ]}
+      />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  wrap: {
+    marginBottom: spacing.md,
+  },
+  input: {
+    borderWidth: 1,
+    borderRadius: radius.full,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm + 2,
+    fontSize: fontSize.md,
+  },
+});
