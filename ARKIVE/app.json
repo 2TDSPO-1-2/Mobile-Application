@@ -25,6 +25,9 @@
     "web": {
       "bundler": "metro",
       "favicon": "./src/assets/arkive_icon.png"
+    },
+    "experiments": {
+      "baseUrl": "/Mobile-Application"
     }
   }
 }
