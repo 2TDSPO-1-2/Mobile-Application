@@ -35,9 +35,23 @@ Turma: `2TDSPO` · FIAP - Unidade Paulista · 2026
 
 ---
 
-## Link para o vídeo demonstrativo
+## Links do Projeto
 
-[Inserir título do vídeo no YouTube](https://www.youtube.com/watch?v=...)
+### Repositório
+
+> [GitHub — Mobile Application](https://github.com/2TDSPO-1-2/Mobile-Application)
+
+### Aplicação publicada
+
+> [GitHub Pages — ArkIve Mobile](https://2TDSPO-1-2.github.io/Mobile-Application/)
+
+### API publicada
+
+> [Render — ArkIve API](https://arkive-api.onrender.com)
+
+### Vídeo demonstrativo
+
+> [YouTube — Projeto ArkIve (MAD)](https://youtu.be/20kEQ-NOdss)
 
 ---
 
@@ -69,128 +83,62 @@ Turma: `2TDSPO` · FIAP - Unidade Paulista · 2026
 - Tabelas `TB_ARKIVE_*`
 - Procedures `PR_ARKIVE_*`
 
+### Publicação
+
+- GitHub
+- GitHub Pages
+- Render
+
 ---
 
 ## Estrutura do Repositório
 
 ```txt
-ARKIVE-MOBILE/
-├── App.tsx
-├── app.json
-├── babel.config.js
-├── index.ts
-├── package.json
-├── tsconfig.json
+Mobile-Application/
 ├── README.md
 │
-├── src/
-│   ├── assets/
-│   │   ├── arkive_logo.png
-│   │   └── arkive_icon.png
-│   │
-│   ├── components/
-│   │   ├── AppButton.tsx
-│   │   ├── AppCard.tsx
-│   │   ├── AppHeader.tsx
-│   │   ├── AppInput.tsx
-│   │   ├── EmptyState.tsx
-│   │   ├── HomeHeader.tsx
-│   │   ├── RatingInput.tsx
-│   │   ├── ScreenContainer.tsx
-│   │   ├── SearchBar.tsx
-│   │   └── StatusBadge.tsx
-│   │
-│   ├── config/
-│   │   └── api.ts
-│   │
-│   ├── context/
-│   │   ├── AuthContext.tsx
-│   │   └── ThemeContext.tsx
-│   │
-│   ├── data/
-│   │   ├── devSeed.ts
-│   │   └── seed.ts
-│   │
-│   ├── hooks/
-│   │   ├── useAuth.ts
-│   │   └── useThemeColors.ts
-│   │
-│   ├── interfaces/
-│   │   └── navigation.ts
-│   │
-│   ├── navigation/
-│   │   ├── AppStack.tsx
-│   │   ├── AuthStack.tsx
-│   │   ├── BottomTabs.tsx
-│   │   └── RootNavigator.tsx
-│   │
-│   ├── screens/
-│   │   ├── AgendaScreen.tsx
-│   │   ├── AnimalFollowUpScreen.tsx
-│   │   ├── AnimalsScreen.tsx
-│   │   ├── EditAnimalScreen.tsx
-│   │   ├── EvaluationsScreen.tsx
-│   │   ├── FeedbackScreen.tsx
-│   │   ├── HomeScreen.tsx
-│   │   ├── LoginScreen.tsx
-│   │   ├── NewAnimalScreen.tsx
-│   │   ├── NewAppointmentScreen.tsx
-│   │   ├── NewEvaluationScreen.tsx
-│   │   ├── NotificationsScreen.tsx
-│   │   ├── ProfileScreen.tsx
-│   │   ├── RegisterScreen.tsx
-│   │   ├── SearchScreen.tsx
-│   │   └── SettingsScreen.tsx
-│   │
-│   ├── services/
-│   │   ├── animalService.ts
-│   │   ├── apiClient.ts
-│   │   ├── apiMappers.ts
-│   │   ├── appointmentService.ts
-│   │   ├── authService.ts
-│   │   ├── evaluationService.ts
-│   │   ├── feedbackService.ts
-│   │   ├── initService.ts
-│   │   ├── notificationService.ts
-│   │   ├── searchService.ts
-│   │   ├── sessionService.ts
-│   │   ├── themeService.ts
-│   │   └── userService.ts
-│   │
-│   ├── storage/
-│   │   ├── base.ts
-│   │   └── keys.ts
-│   │
-│   ├── styles/
-│   │   ├── colors.ts
-│   │   ├── common.ts
-│   │   └── theme.ts
-│   │
-│   ├── types/
-│   │   └── index.ts
-│   │
-│   └── utils/
-│       ├── age.ts
-│       ├── date.ts
-│       ├── id.ts
-│       └── validation.ts
-│
-└── backend/
+└── ARKIVE/
+    ├── App.tsx
+    ├── app.json
+    ├── babel.config.js
+    ├── index.ts
     ├── package.json
+    ├── package-lock.json
     ├── tsconfig.json
-    ├── README.md
-    ├── .env.example
     │
-    └── src/
-        ├── config/
-        ├── controllers/
-        ├── middleware/
-        ├── repositories/
-        ├── routes/
-        ├── services/
-        ├── types/
-        ├── utils/
-        └── server.ts
+    ├── src/
+    │   ├── assets/
+    │   ├── components/
+    │   ├── config/
+    │   ├── context/
+    │   ├── data/
+    │   ├── hooks/
+    │   ├── interfaces/
+    │   ├── navigation/
+    │   ├── screens/
+    │   ├── services/
+    │   ├── storage/
+    │   ├── styles/
+    │   ├── types/
+    │   └── utils/
+    │
+    └── backend/
+        ├── package.json
+        ├── package-lock.json
+        ├── tsconfig.json
+        ├── README.md
+        ├── .env.example
+        │
+        └── src/
+            ├── config/
+            ├── controllers/
+            ├── middleware/
+            ├── repositories/
+            ├── routes/
+            ├── services/
+            ├── types/
+            ├── utils/
+            └── server.ts
 ```
 
 ---
@@ -386,23 +334,27 @@ O AsyncStorage é usado no app para:
 
 ---
 
-## Integração com o Backend
+## Integração com a API
 
-O app consome a API local:
+O app publicado no GitHub Pages consome a API publicada no Render:
 
 ```txt
-http://localhost:3333
+https://arkive-api.onrender.com
 ```
 
 Arquivo de configuração:
 
 ```txt
-src/config/api.ts
+ARKIVE/src/config/api.ts
 ```
 
-Em ambiente web local, `localhost` funciona normalmente.
+Para execução local com backend local, altere o valor de `API_BASE_URL` para:
 
-Para execução em dispositivo físico via Expo Go, pode ser necessário trocar `localhost` pelo IP local da máquina:
+```ts
+export const API_BASE_URL = 'http://localhost:3333';
+```
+
+Para execução em dispositivo físico via Expo Go com backend local, pode ser necessário trocar `localhost` pelo IP local da máquina:
 
 ```ts
 export const API_BASE_URL = 'http://192.168.15.14:3333';
@@ -414,6 +366,7 @@ export const API_BASE_URL = 'http://192.168.15.14:3333';
 
 | Método | Endpoint | Descrição |
 |:------:|:---------|:----------|
+| GET | `/` | Verifica se a API está online |
 | GET | `/health` | Verifica status da API |
 | POST | `/auth/login` | Login |
 | POST | `/auth/register` | Cadastro |
@@ -451,12 +404,12 @@ Para executar o projeto, é necessário ter instalado:
 
 ---
 
-## Como Executar o Backend
+## Como Executar o Backend Localmente
 
 Acesse a pasta do backend:
 
 ```bash
-cd backend
+cd ARKIVE/backend
 ```
 
 Instale as dependências:
@@ -480,17 +433,38 @@ http://localhost:3333
 Validação rápida:
 
 ```bash
+curl http://localhost:3333/
 curl http://localhost:3333/health
 ```
 
-Resposta esperada:
+Resposta esperada em `/`:
 
 ```json
 {
   "status": "ok",
-  "service": "arkive-backend"
+  "service": "arkive-backend",
+  "message": "ArkIve API online"
 }
 ```
+
+---
+
+## API Publicada no Render
+
+A API também está publicada no Render:
+
+```txt
+https://arkive-api.onrender.com
+```
+
+Validação:
+
+```bash
+curl https://arkive-api.onrender.com/
+curl https://arkive-api.onrender.com/health
+```
+
+> Observação: em planos gratuitos, a primeira requisição pode demorar alguns segundos porque o serviço pode entrar em modo de inatividade.
 
 ---
 
@@ -504,16 +478,27 @@ Configuração utilizada:
 ORACLE_USER=rm561996
 ORACLE_PASSWORD=230602
 ORACLE_CONNECT_STRING=(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=oracle.fiap.com.br)(PORT=1521))(CONNECT_DATA=(SID=ORCL)))
-PORT=3333
 ```
 
-O projeto possui fallback interno para o ambiente acadêmico, garantindo conexão com o banco utilizado na demonstração mesmo sem configuração manual adicional.
+O arquivo de referência para variáveis de ambiente está em:
+
+```txt
+ARKIVE/backend/.env.example
+```
+
+As credenciais reais devem ser configuradas no ambiente do backend, seja localmente em `.env`, seja no painel do Render.
 
 ---
 
-## Como Executar o App
+## Como Executar o App Localmente
 
-Na raiz do projeto:
+Acesse a pasta do app:
+
+```bash
+cd ARKIVE
+```
+
+Instale as dependências:
 
 ```bash
 npm install
@@ -545,6 +530,24 @@ npm start
 
 ---
 
+## Como Acessar o App Publicado
+
+O app está publicado no GitHub Pages:
+
+```txt
+https://2TDSPO-1-2.github.io/Mobile-Application/
+```
+
+A publicação web foi gerada com:
+
+```bash
+cd ARKIVE
+npx expo export --platform web
+npx gh-pages --nojekyll -d dist
+```
+
+---
+
 ## Scripts Disponíveis
 
 ### App
@@ -569,16 +572,17 @@ npm start
 
 ## Validação TypeScript
 
-Na raiz do projeto:
+No app:
 
 ```bash
+cd ARKIVE
 npx tsc --noEmit
 ```
 
 No backend:
 
 ```bash
-cd backend
+cd ARKIVE/backend
 npm run typecheck
 ```
 
@@ -661,6 +665,8 @@ Senha: hash_senha_006
 | Protótipo funcional | Fluxos principais implementados |
 | Execução Expo | Compatível com Expo Web e Expo Go |
 | Integração com banco | Backend Express conectado ao Oracle |
+| Publicação web | GitHub Pages |
+| API pública | Render |
 
 ---
 
@@ -689,6 +695,8 @@ O ARKIVE utiliza:
 - O feedback é diferente da Avaliação de Bem-Estar Animal.
 - Avaliações de BEA são registradas por veterinários.
 - Tutores solicitam consultas e acompanham seus animais.
+- A versão publicada no GitHub Pages depende da API publicada no Render para autenticação e dados reais.
+- A primeira chamada para a API publicada pode demorar alguns segundos em razão da política de inatividade do plano gratuito do Render.
 
 ---
 
@@ -708,6 +716,8 @@ O projeto contempla uma solução funcional para demonstração acadêmica:
 - Configurações.
 - Tema claro/escuro.
 - Backend integrado ao Oracle.
+- App publicado no GitHub Pages.
+- API publicada no Render.
 
 ---
 
