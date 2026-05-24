@@ -8,17 +8,27 @@ import { initPool, closePool } from './config/database';
 dotenv.config();
 
 const app = express();
-const port = Number(process.env.PORT ?? 3333);
+const port = Number(process.env.PORT) || 3333;
 
 app.use(cors());
 app.use(express.json());
+
+app.get('/', (_req, res) => {
+  res.json({
+    status: 'ok',
+    service: 'arkive-backend',
+    message: 'ArkIve API online',
+  });
+});
+
 app.use(routes);
 app.use(errorHandler);
 
 async function start(): Promise<void> {
   await initPool();
+
   app.listen(port, () => {
-    console.log(`ArkIve API rodando em http://localhost:${port}`);
+    console.log(`ArkIve API rodando na porta ${port}`);
   });
 }
 
