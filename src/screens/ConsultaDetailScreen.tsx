@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { View, Text, StyleSheet, Alert } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { AppHeader } from '../components/AppHeader';
@@ -7,9 +7,28 @@ import { AppCard } from '../components/AppCard';
 import { AppButton } from '../components/AppButton';
 import { StatusBadge } from '../components/StatusBadge';
 import { EmptyState } from '../components/EmptyState';
+import { ClinicalNarrativeEditor, type NarrativeStatusTone } from '../components/ClinicalNarrativeEditor';
+import { ClinicalSupportCard } from '../components/ClinicalSupportCard';
+import { VeterinarianConclusionForm } from '../components/VeterinarianConclusionForm';
+import { ConfirmedDiagnosisCard } from '../components/ConfirmedDiagnosisCard';
 import { useThemeColors } from '../hooks/useThemeColors';
-import { useConsulta, useDeleteConsulta, useStartConsulta } from '../hooks/useConsultas';
+import {
+  useConsulta,
+  useConsultaClinicalSupport,
+  useDeleteConsulta,
+  useFinalizeConsulta,
+  useStartConsulta,
+} from '../hooks/useConsultas';
+import { useConsultaWorkflow } from '../hooks/useConsultaWorkflow';
+import { useConsultaDiagnosticos } from '../hooks/useDiagnosticos';
+import { findConfirmedDiagnosis } from '../services/diagnosticoService';
+import type { FinalizarConsultaRequest } from '../services/consultaService';
 import { consultaStatusPresentation } from '../utils/statusPresentation';
+import {
+  describeClinicalSupportError,
+  describeFinalizeError,
+  describeNarrativeSaveError,
+} from '../utils/errorMessages';
 import type { AppStackParamList } from '../interfaces/navigation';
 import { spacing, fontSize } from '../styles/theme';
 
@@ -28,8 +47,38 @@ export function ConsultaDetailScreen() {
   const { data: consulta, isPending, isError, error, refetch } = useConsulta(consultaId);
   const startMutation = useStartConsulta(consultaId);
   const deleteMutation = useDeleteConsulta();
+  const finalizeMutation = useFinalizeConsulta(consultaId);
+  const { saveNarrativa, requestSupport, requestClinicalSupportFromDraft } =
+    useConsultaWorkflow(consultaId);
+
+  const supportEnabled = consulta?.status === 'AP' || consulta?.status === 'FI';
+  const clinicalSupport = useConsultaClinicalSupport(consultaId, { enabled: supportEnabled });
+
+  const diagnosticosEnabled = consulta?.status === 'FI';
+  const diagnosticos = useConsultaDiagnosticos(consultaId, { enabled: diagnosticosEnabled });
+  const confirmedDiagnosis = diagnosticos.data ? findConfirmedDiagnosis(diagnosticos.data) : undefined;
 
   const [actionError, setActionError] = useState('');
+
+  // Initialize the draft from the persisted narrative exactly once per
+  // consultation — never on every background refetch, so an in-progress
+  // background query never clobbers what the veterinarian is typing.
+  const [draft, setDraft] = useState('');
+  const initializedForId = useRef<number | null>(null);
+  if (consulta && initializedForId.current !== consulta.id) {
+    initializedForId.current = consulta.id;
+    setDraft(consulta.transcricao ?? '');
+  }
+
+  const handleChangeDraft = (text: string) => {
+    setDraft(text);
+    if (saveNarrativa.isError) {
+      saveNarrativa.reset();
+    }
+  };
+
+  const savedBaseline = saveNarrativa.data?.transcricao ?? consulta?.transcricao ?? '';
+  const dirty = draft !== savedBaseline;
 
   const handleStart = async () => {
     setActionError('');
@@ -65,6 +114,26 @@ export function ConsultaDetailScreen() {
     );
   };
 
+  const handleSaveNarrativa = () => {
+    saveNarrativa.mutate(draft);
+  };
+
+  const handleRequestSupport = async () => {
+    try {
+      await requestClinicalSupportFromDraft(draft);
+    } catch {
+      // Surfaced via saveNarrativa.isError / requestSupport.isError below — nothing else to do here.
+    }
+  };
+
+  const handleFinalize = async (input: FinalizarConsultaRequest) => {
+    try {
+      await finalizeMutation.mutateAsync(input);
+    } catch {
+      // Surfaced via finalizeMutation.isError below.
+    }
+  };
+
   if (isPending) {
     return (
       <View style={[styles.root, { backgroundColor: colors.background }]}>
@@ -92,8 +161,26 @@ export function ConsultaDetailScreen() {
   }
 
   const canStart = consulta.status === 'AG';
-  // Backend-confirmed rule (ConsultaService.excluir): only AG can be deleted; anything else returns 409.
   const canDelete = consulta.status === 'AG';
+  const isEmProgresso = consulta.status === 'EP';
+  const isAguardandoParecer = consulta.status === 'AP';
+  const isFinalizada = consulta.status === 'FI';
+
+  let narrativeStatusLabel: string | undefined;
+  let narrativeStatusTone: NarrativeStatusTone = 'neutral';
+  let narrativeErrorMessage: string | undefined;
+
+  if (saveNarrativa.isPending) {
+    narrativeStatusLabel = 'Salvando...';
+    narrativeStatusTone = 'saving';
+  } else if (saveNarrativa.isError) {
+    narrativeErrorMessage = describeNarrativeSaveError(saveNarrativa.error);
+  } else if (dirty) {
+    narrativeStatusLabel = 'Alterações não salvas';
+  } else if (saveNarrativa.isSuccess) {
+    narrativeStatusLabel = 'Narrativa salva';
+    narrativeStatusTone = 'saved';
+  }
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
@@ -135,21 +222,110 @@ export function ConsultaDetailScreen() {
           ) : null}
         </AppCard>
 
-        {consulta.status === 'EP' ? (
-          <Text style={{ color: colors.textSecondary, marginBottom: spacing.md }}>
-            Consulta em progresso. Registro de narrativa clínica e apoio de IA chegam em uma
-            próxima etapa.
-          </Text>
+        {isEmProgresso ? (
+          <>
+            <ClinicalNarrativeEditor
+              value={draft}
+              onChangeText={handleChangeDraft}
+              editable={!requestSupport.isPending}
+              statusLabel={narrativeStatusLabel}
+              statusTone={narrativeStatusTone}
+              errorMessage={narrativeErrorMessage}
+            />
+
+            <AppButton
+              title="Salvar"
+              variant="outline"
+              onPress={handleSaveNarrativa}
+              loading={saveNarrativa.isPending}
+              disabled={!dirty || saveNarrativa.isPending || requestSupport.isPending}
+            />
+
+            {requestSupport.isPending ? (
+              <AppCard>
+                <Text style={{ color: colors.text, fontWeight: '700', marginBottom: spacing.xs }}>
+                  Analisando o caso clínico...
+                </Text>
+                <Text style={{ color: colors.textSecondary }}>
+                  A análise pode levar alguns instantes.
+                </Text>
+              </AppCard>
+            ) : (
+              <>
+                {requestSupport.isError ? (
+                  <>
+                    <Text style={{ color: colors.error, marginBottom: spacing.sm }}>
+                      {describeClinicalSupportError(requestSupport.error)}
+                    </Text>
+                    <AppButton
+                      title="Verificar se já foi processado"
+                      variant="outline"
+                      onPress={() => refetch()}
+                    />
+                  </>
+                ) : null}
+
+                <AppButton
+                  title="Solicitar apoio clínico"
+                  onPress={handleRequestSupport}
+                  disabled={!draft.trim() || saveNarrativa.isPending}
+                />
+              </>
+            )}
+          </>
         ) : null}
 
-        {consulta.status === 'AP' ? (
-          <Text style={{ color: colors.textSecondary, marginBottom: spacing.md }}>
-            Aguardando parecer — a revisão do apoio de IA e a conclusão do veterinário ainda não
-            estão disponíveis neste aplicativo.
-          </Text>
+        {(isAguardandoParecer || isFinalizada) && consulta.transcricao ? (
+          <AppCard>
+            <Text style={[styles.label, { color: colors.text }]}>Narrativa clínica</Text>
+            <Text style={[styles.field, { color: colors.text }]}>{consulta.transcricao}</Text>
+          </AppCard>
         ) : null}
 
-        {consulta.status === 'FI' || consulta.status === 'CA' ? (
+        {isAguardandoParecer ? (
+          <>
+            {clinicalSupport.isPending ? (
+              <Text style={{ color: colors.textSecondary, marginBottom: spacing.md }}>
+                Carregando apoio clínico...
+              </Text>
+            ) : clinicalSupport.isError ? (
+              <EmptyState
+                title="Não foi possível carregar o apoio clínico"
+                message="Tente novamente em instantes."
+              />
+            ) : clinicalSupport.data ? (
+              <ClinicalSupportCard support={clinicalSupport.data} />
+            ) : null}
+
+            <VeterinarianConclusionForm
+              onSubmit={handleFinalize}
+              isSubmitting={finalizeMutation.isPending}
+              errorMessage={
+                finalizeMutation.isError ? describeFinalizeError(finalizeMutation.error) : undefined
+              }
+            />
+          </>
+        ) : null}
+
+        {isFinalizada ? (
+          <>
+            {clinicalSupport.data ? <ClinicalSupportCard support={clinicalSupport.data} /> : null}
+
+            {diagnosticos.isPending ? (
+              <Text style={{ color: colors.textSecondary, marginBottom: spacing.md }}>
+                Carregando conclusão do veterinário...
+              </Text>
+            ) : confirmedDiagnosis ? (
+              <ConfirmedDiagnosisCard diagnosis={confirmedDiagnosis} conclusao={consulta.observacao} />
+            ) : null}
+
+            <Text style={{ color: colors.textSecondary, marginBottom: spacing.md }}>
+              Consulta encerrada — registro somente leitura.
+            </Text>
+          </>
+        ) : null}
+
+        {consulta.status === 'CA' ? (
           <Text style={{ color: colors.textSecondary, marginBottom: spacing.md }}>
             Consulta encerrada — registro somente leitura.
           </Text>

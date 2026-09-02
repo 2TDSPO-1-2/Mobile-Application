@@ -1,14 +1,19 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { ApiError } from '../services/apiClient';
 import {
   createConsulta,
   deleteConsulta,
+  finalizeConsulta,
   getClinicalSupport,
   getConsulta,
   listConsultas,
+  requestClinicalSupport,
   startConsulta,
   updateConsulta,
+  updateNarrativa,
   type ConsultaDto,
   type CreateConsultaInput,
+  type FinalizarConsultaRequest,
   type UpdateConsultaInput,
 } from '../services/consultaService';
 import { queryKeys } from '../query/queryKeys';
@@ -98,13 +103,90 @@ export function useStartConsulta(id: number) {
 
 /**
  * Read-only and explicitly confirmed safe (GET never triggers the AI
- * engine) — prepared now per the Phase 2.5 scope, not consumed by any
- * screen yet. Do not add a mutation hook for `POST /suporte-clinico` until
- * the narrative + save-then-AI sequencing phase.
+ * engine). `enabled` defaults to true but callers should gate it to
+ * AP/FI consultations — no point polling this for AG/EP/CA.
  */
-export function useConsultaClinicalSupport(id: number) {
+export function useConsultaClinicalSupport(id: number, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: queryKeys.consultas.clinicalSupport(id),
     queryFn: () => getClinicalSupport(id),
+    enabled: options?.enabled ?? true,
+  });
+}
+
+/**
+ * PATCH narrativa. Only invalidates this consultation's detail — the
+ * narrative doesn't appear on the list cards, so refetching the list would
+ * be wasted work (see Phase 2.5's "keep invalidation precise" note).
+ *
+ * This mutation is meant to be used through useConsultaWorkflow.ts (both
+ * the standalone "Salvar" button and the "Solicitar apoio clínico" action
+ * share this exact instance in ConsultaDetailScreen, so `data`/`isPending`/
+ * `isError` stay consistent regardless of which button triggered it).
+ */
+export function useSaveNarrativa(id: number) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (narrativa: string) => updateNarrativa(id, narrativa),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.consultas.detail(id) });
+    },
+  });
+}
+
+/**
+ * POST suporte-clinico. `retry: false` is stated explicitly here — on top
+ * of the QueryClient's own default — because this is precisely the request
+ * that must never be silently repeated (Render/external-engine cold start).
+ * On a 409 (another action likely changed this consultation's status),
+ * eagerly refetch the detail query so the UI reflects reality instead of
+ * inviting a second attempt against stale assumptions.
+ */
+export function useRequestClinicalSupport(id: number) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => requestClinicalSupport(id),
+    retry: false,
+    onError: (mutationError) => {
+      if (mutationError instanceof ApiError && mutationError.status === 409) {
+        queryClient.invalidateQueries({ queryKey: queryKeys.consultas.detail(id) });
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.consultas.detail(id) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.consultas.list() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.consultas.clinicalSupport(id) });
+    },
+  });
+}
+
+/**
+ * POST finalizar. Kept separate from useConsultaWorkflow on purpose: that
+ * hook exists specifically to enforce the save-then-AI ordering invariant,
+ * and finalization has no such ordering dependency on anything else — by
+ * the time a consultation is AP, the narrative is already saved and AI
+ * already ran. Folding an unrelated action into that hook would blur why
+ * it exists. `retry: false` for the same reason as the AI mutation: this
+ * must never be silently repeated.
+ */
+export function useFinalizeConsulta(id: number) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: FinalizarConsultaRequest) => finalizeConsulta(id, input),
+    retry: false,
+    onError: (mutationError) => {
+      if (mutationError instanceof ApiError && mutationError.status === 409) {
+        queryClient.invalidateQueries({ queryKey: queryKeys.consultas.detail(id) });
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.consultas.detail(id) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.consultas.list() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.consultas.clinicalSupport(id) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.diagnosticos.byConsulta(id) });
+    },
   });
 }

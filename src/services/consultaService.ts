@@ -1,4 +1,4 @@
-import { apiDelete, apiGet, apiPost, apiPut } from './apiClient';
+import { apiDelete, apiGet, apiPatch, apiPost, apiPut } from './apiClient';
 
 /** AG Agendada · EP Em Progresso · AP Aguardando Parecer · FI Finalizada · CA Cancelada */
 export type ConsultaStatus = 'AG' | 'EP' | 'AP' | 'FI' | 'CA';
@@ -157,8 +157,55 @@ export async function startConsulta(id: number): Promise<ConsultaWorkflowRespons
 /**
  * Confirmed: `GET /api/consultas/{id}/suporte-clinico` only reads whatever
  * was already persisted — `ClinicalSupportService.buscarSuporte` never calls
- * the external engine. Safe to call; not wired to any screen this phase.
+ * the external engine.
  */
 export async function getClinicalSupport(id: number): Promise<ClinicalSupportResponse> {
   return apiGet<ClinicalSupportResponse>(`/api/consultas/${id}/suporte-clinico`);
+}
+
+/**
+ * Confirmed: `ConsultaWorkflowService.atualizarNarrativa` accepts this while
+ * the consultation is EP *or* AP, and stores the text on `Consulta.transcricao`
+ * (the request field is called `narrativa`; the field holding the same text
+ * on every response DTO is `transcricao` — not a naming mismatch, two
+ * different DTOs for two different directions).
+ *
+ * Only ever call this from useConsultaWorkflow.ts, awaited to completion,
+ * before requestClinicalSupport — never in parallel with it.
+ */
+export async function updateNarrativa(
+  id: number,
+  narrativa: string
+): Promise<ConsultaWorkflowResponse> {
+  return apiPatch<ConsultaWorkflowResponse>(`/api/consultas/${id}/narrativa`, { narrativa });
+}
+
+/**
+ * POST, no request body — the backend reads the persisted consultation
+ * directly from Oracle, so whatever narrative text is in the database at
+ * call time is what the Clinical Engine sees. Never call this without
+ * having already awaited a successful updateNarrativa for any new text.
+ */
+export async function requestClinicalSupport(id: number): Promise<ClinicalSupportResponse> {
+  return apiPost<ClinicalSupportResponse>(`/api/consultas/${id}/suporte-clinico`);
+}
+
+/**
+ * Confirmed: `ConsultaStatusTransitionPolicy` actually permits both `EP->FI`
+ * and `AP->FI` server-side. This app deliberately only ever calls this from
+ * `AP` — the intended ArkIve flow is narrative -> AI support -> veterinarian
+ * conclusion, and skipping straight from EP would let a veterinarian
+ * finalize a case IA never got a chance to look at. That's a product
+ * choice enforced in ConsultaDetailScreen.tsx, not a backend limitation.
+ *
+ * `doencaId` is always sent as `null` from this app: there is no `/api/doencas`
+ * (or equivalent) REST endpoint anywhere in the backend for a mobile client
+ * to look one up, and DiagnosticoService confirms it's optional (nullable).
+ * Never invent/hardcode a numeric doencaId.
+ */
+export async function finalizeConsulta(
+  id: number,
+  input: FinalizarConsultaRequest
+): Promise<ConsultaWorkflowResponse> {
+  return apiPost<ConsultaWorkflowResponse>(`/api/consultas/${id}/finalizar`, input);
 }
