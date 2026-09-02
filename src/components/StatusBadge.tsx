@@ -1,33 +1,29 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import type { AppointmentStatus } from '../types';
 import { useThemeColors } from '../hooks/useThemeColors';
 import { spacing, radius, fontSize } from '../styles/theme';
+import type { StatusPresentation } from '../utils/statusPresentation';
 
-const LABELS: Record<AppointmentStatus, string> = {
-  solicitada: 'Solicitada',
-  confirmada: 'Confirmada',
-  realizada: 'Realizada',
-  cancelada: 'Cancelada',
-};
-
-interface Props {
-  status: AppointmentStatus;
-}
-
-export function StatusBadge({ status }: Props) {
+/**
+ * Purely presentational — a colored pill for a {label, tone} pair. Domain
+ * mapping (which status means which label/tone) lives in
+ * src/utils/statusPresentation.ts, so this one component serves both the old
+ * Appointment statuses and the real Consulta statuses without forking.
+ */
+export function StatusBadge({ label, tone }: StatusPresentation) {
   const colors = useThemeColors();
 
-  const bgMap: Record<AppointmentStatus, string> = {
-    solicitada: colors.warning,
-    confirmada: colors.primary,
-    realizada: colors.success,
-    cancelada: colors.error,
+  const toneColor: Record<StatusPresentation['tone'], string> = {
+    neutral: colors.textSecondary,
+    info: colors.primary,
+    warning: colors.warning,
+    success: colors.success,
+    danger: colors.error,
   };
 
   return (
-    <View style={[styles.badge, { backgroundColor: bgMap[status] }]}>
-      <Text style={styles.text}>{LABELS[status]}</Text>
+    <View style={[styles.badge, { backgroundColor: toneColor[tone] }]}>
+      <Text style={styles.text}>{label}</Text>
     </View>
   );
 }

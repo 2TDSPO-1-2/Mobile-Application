@@ -3,113 +3,136 @@ import React, {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
-import type { User, UserRole } from '../types';
-import type { RegisterData, UserContextValue } from '../interfaces/navigation';
-import { findUserById, updateUser } from '../services/userService';
+import type { AuthContextValue, AuthStatus } from '../interfaces/navigation';
+import type { User } from '../types';
 import {
-  getSession,
-  saveSession,
-  clearSession,
-} from '../services/sessionService';
-import {
-  loginWithApi,
-  registerWithApi,
-  getCachedCurrentUser,
-} from '../services/authService';
+  getCredentials,
+  saveCredentials,
+  clearCredentials,
+  type StoredCredentials,
+} from '../storage/credentialStore';
+import { verifyCredentials } from '../services/authService';
+import { onUnauthorized } from '../services/authEvents';
+import { queryClient } from '../query/queryClient';
 
-export const AuthContext = createContext<UserContextValue | null>(null);
+export const AuthContext = createContext<AuthContextValue | null>(null);
+
+function toLegacyUser(username: string): User {
+  return {
+    id: username,
+    name: username,
+    email: '',
+    phone: '',
+    cpf: '',
+    role: 'veterinario',
+    createdAt: new Date().toISOString(),
+  };
+}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [status, setStatus] = useState<AuthStatus>('initializing');
+  const [username, setUsername] = useState<string | null>(null);
+  const credentialsRef = useRef<StoredCredentials | null>(null);
 
-  const refreshUser = useCallback(async () => {
-    const session = await getSession();
-    if (!session) {
-      setUser(null);
+  const applyAuthenticated = useCallback((credentials: StoredCredentials) => {
+    credentialsRef.current = credentials;
+    setUsername(credentials.username);
+    setStatus('authenticated');
+  }, []);
+
+  const applySignedOut = useCallback(async () => {
+    credentialsRef.current = null;
+    setUsername(null);
+    await clearCredentials();
+    // Prevents a veterinarian who just logged out (or was logged out by a
+    // 401) from briefly seeing the previous account's cached server data.
+    queryClient.clear();
+    setStatus('unauthenticated');
+  }, []);
+
+  const restoreSession = useCallback(async () => {
+    const stored = await getCredentials();
+    if (!stored) {
+      setStatus('unauthenticated');
       return;
     }
-    const found = await findUserById(session.userId);
-    setUser(found ?? null);
-  }, []);
+
+    const result = await verifyCredentials(stored);
+    if (result.ok) {
+      applyAuthenticated(stored);
+      return;
+    }
+
+    if (result.reason === 'unreachable' || result.reason === 'unknown') {
+      // A cold backend or a transient failure must never be treated as "the
+      // stored password is wrong" — keep the credential and let the UI retry.
+      credentialsRef.current = stored;
+      setUsername(stored.username);
+      setStatus('unreachable');
+      return;
+    }
+
+    // 'invalid' or 'forbidden': the credential is confirmed no longer good.
+    await applySignedOut();
+  }, [applySignedOut, applyAuthenticated]);
 
   useEffect(() => {
-    (async () => {
-      const session = await getSession();
-      if (session) {
-        const cached = await getCachedCurrentUser();
-        if (cached?.autoLogin !== false && cached?.id === session.userId) {
-          setUser(cached);
-        } else if (session.userId) {
-          const fromApi = await findUserById(session.userId);
-          setUser(fromApi ?? cached ?? null);
-        }
-      }
-      setLoading(false);
-    })();
+    restoreSession();
+    // Intentionally runs once on mount only — subsequent revalidation goes
+    // through refreshUser()/login(), not this effect.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => onUnauthorized(() => {
+    applySignedOut();
+  }), [applySignedOut]);
 
   const login = useCallback(
-    async (
-      identifier: string,
-      password: string,
-      role: UserRole,
-      autoLogin = true
-    ) => {
-      const result = await loginWithApi(identifier, password, role, autoLogin);
-      if (result.error || !result.user) {
-        return result.error ?? 'Credenciais inválidas.';
+    async (rawUsername: string, rawPassword: string): Promise<string | null> => {
+      const trialCredentials: StoredCredentials = {
+        username: rawUsername.trim(),
+        password: rawPassword,
+      };
+
+      if (!trialCredentials.username || !trialCredentials.password) {
+        return 'Preencha usuário e senha.';
       }
-      await saveSession({
-        userId: result.user.id,
-        role: result.user.role,
-        responsavelId: result.user.responsavelId,
-        veterinarioId: result.user.veterinarioId,
-        login: result.user.login,
-      });
-      setUser(result.user);
+
+      const result = await verifyCredentials(trialCredentials);
+      if (!result.ok) {
+        return result.message;
+      }
+
+      await saveCredentials(trialCredentials);
+      applyAuthenticated(trialCredentials);
       return null;
     },
-    []
+    [applyAuthenticated]
   );
 
-  const register = useCallback(async (data: RegisterData) => {
-    const result = await registerWithApi(data);
-    if (result.error || !result.user) {
-      return result.error ?? 'Erro ao cadastrar.';
-    }
-    await saveSession({
-      userId: result.user.id,
-      role: result.user.role,
-      responsavelId: result.user.responsavelId,
-      veterinarioId: result.user.veterinarioId,
-      login: result.user.login,
-    });
-    setUser(result.user);
-    return null;
-  }, []);
-
   const logout = useCallback(async () => {
-    if (user) {
-      await updateUser({ ...user, autoLogin: false });
-    }
-    await clearSession();
-    setUser(null);
-  }, [user]);
+    await applySignedOut();
+  }, [applySignedOut]);
 
-  const value = useMemo<UserContextValue>(
+  const refreshUser = useCallback(async () => {
+    await restoreSession();
+  }, [restoreSession]);
+
+  const value = useMemo<AuthContextValue>(
     () => ({
-      user,
-      role: user?.role ?? null,
-      loading,
+      status,
+      username,
+      user: username ? toLegacyUser(username) : null,
+      role: username ? 'veterinario' : null,
+      loading: status === 'initializing',
       login,
-      register,
       logout,
       refreshUser,
     }),
-    [user, loading, login, register, logout, refreshUser]
+    [status, username, login, logout, refreshUser]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

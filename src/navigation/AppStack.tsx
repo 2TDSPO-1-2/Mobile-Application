@@ -6,6 +6,8 @@ import { NewAnimalScreen } from '../screens/NewAnimalScreen';
 import { EditAnimalScreen } from '../screens/EditAnimalScreen';
 import { AnimalFollowUpScreen } from '../screens/AnimalFollowUpScreen';
 import { NewAppointmentScreen } from '../screens/NewAppointmentScreen';
+import { ConsultaDetailScreen } from '../screens/ConsultaDetailScreen';
+import { NewConsultaScreen } from '../screens/NewConsultaScreen';
 import { EvaluationsScreen } from '../screens/EvaluationsScreen';
 import { NewEvaluationScreen } from '../screens/NewEvaluationScreen';
 import { FeedbackScreen } from '../screens/FeedbackScreen';
@@ -32,6 +34,8 @@ export function AppStack() {
       <Stack.Screen name="AtualizarAnimal" component={EditAnimalScreen} />
       <Stack.Screen name="AcompanhamentoAnimal" component={AnimalFollowUpScreen} />
       <Stack.Screen name="NovaConsulta" component={NewAppointmentScreen} />
+      <Stack.Screen name="ConsultaDetalhe" component={ConsultaDetailScreen} />
+      <Stack.Screen name="CriarConsulta" component={NewConsultaScreen} />
       <Stack.Screen name="Avaliacoes" component={EvaluationsScreen} />
       <Stack.Screen name="NovaAvaliacao" component={NewEvaluationScreen} />
       <Stack.Screen name="Feedback" component={FeedbackScreen} />

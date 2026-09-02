@@ -2,13 +2,21 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import type { BottomTabParamList } from '../interfaces/navigation';
 import { HomeScreen } from '../screens/HomeScreen';
-import { AgendaScreen } from '../screens/AgendaScreen';
-import { AnimalsScreen } from '../screens/AnimalsScreen';
+import { ConsultasScreen } from '../screens/ConsultasScreen';
+import { PatientsScreen } from '../screens/PatientsScreen';
 import { useThemeColors } from '../hooks/useThemeColors';
 import { fontSize } from '../styles/theme';
 
 const Tab = createBottomTabNavigator<BottomTabParamList>();
 
+/**
+ * The old "Agenda"/"Animais" tabs (Node-backend Appointment/Animal screens)
+ * have been removed from the primary tab bar — that backend no longer
+ * exists, so they were guaranteed-broken entry points on the app's main
+ * happy path. Their screens still exist in src/screens/ and still compile;
+ * they're just no longer linked from here. "Consultas" and "Pacientes" are
+ * the real, Spring-backed replacements.
+ */
 export function BottomTabs() {
   const colors = useThemeColors();
 
@@ -31,14 +39,14 @@ export function BottomTabs() {
         options={{ tabBarLabel: 'Início' }}
       />
       <Tab.Screen
-        name="Agenda"
-        component={AgendaScreen}
-        options={{ tabBarLabel: 'Agenda' }}
+        name="Consultas"
+        component={ConsultasScreen}
+        options={{ tabBarLabel: 'Consultas' }}
       />
       <Tab.Screen
-        name="Animais"
-        component={AnimalsScreen}
-        options={{ tabBarLabel: 'Animais' }}
+        name="Pacientes"
+        component={PatientsScreen}
+        options={{ tabBarLabel: 'Pacientes' }}
       />
     </Tab.Navigator>
   );
