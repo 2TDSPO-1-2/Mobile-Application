@@ -13,8 +13,7 @@ import { consultaStatusPresentation } from '../utils/statusPresentation';
 import type { AppStackParamList } from '../interfaces/navigation';
 import { spacing, fontSize } from '../styles/theme';
 
-function formatDataHora(value?: string): string {
-  if (!value) return 'Não informado';
+function formatDataHora(value: string): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleString('pt-BR');
@@ -93,7 +92,8 @@ export function ConsultaDetailScreen() {
   }
 
   const canStart = consulta.status === 'AG';
-  const canDelete = consulta.status === 'AG' || consulta.status === 'EP';
+  // Backend-confirmed rule (ConsultaService.excluir): only AG can be deleted; anything else returns 409.
+  const canDelete = consulta.status === 'AG';
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
@@ -103,21 +103,35 @@ export function ConsultaDetailScreen() {
         <AppCard>
           <View style={styles.row}>
             <Text style={[styles.label, { color: colors.text }]}>Status</Text>
-            <StatusBadge {...consultaStatusPresentation(consulta.status)} />
+            <StatusBadge
+              label={consulta.statusDescricao}
+              tone={consultaStatusPresentation(consulta.status).tone}
+            />
           </View>
 
+          <Text style={[styles.field, { color: colors.text }]}>Paciente: {consulta.animalNome}</Text>
           <Text style={[styles.field, { color: colors.textSecondary }]}>
-            Data/hora: {formatDataHora(consulta.dataHora)}
+            Veterinário: {consulta.veterinarioNome}
           </Text>
-
-          {consulta.animalId != null ? (
-            <Text style={[styles.field, { color: colors.textSecondary }]}>
-              Paciente (ID): {consulta.animalId}
-            </Text>
-          ) : null}
+          <Text style={[styles.field, { color: colors.textSecondary }]}>
+            {consulta.modalidade === 'PRESENCIAL' ? 'Presencial' : 'Remota'} ·{' '}
+            {formatDataHora(consulta.dataHora)}
+          </Text>
 
           {consulta.motivo ? (
             <Text style={[styles.field, { color: colors.text }]}>Motivo: {consulta.motivo}</Text>
+          ) : null}
+
+          {consulta.sintomas ? (
+            <Text style={[styles.field, { color: colors.textSecondary }]}>
+              Sintomas: {consulta.sintomas}
+            </Text>
+          ) : null}
+
+          {consulta.peso != null ? (
+            <Text style={[styles.field, { color: colors.textSecondary }]}>
+              Peso: {consulta.peso} kg
+            </Text>
           ) : null}
         </AppCard>
 

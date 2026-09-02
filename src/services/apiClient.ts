@@ -66,10 +66,14 @@ async function apiRequest<T>(path: string, options: ApiRequestOptions = {}): Pro
   if (!response.ok) {
     let message = response.statusText || `Erro ${response.status}`;
     try {
+      // Confirmed live shape from the real backend's error body:
+      // {"timestamp":...,"status":401,"error":"Unauthorized","message":"Autenticacao obrigatoria.","path":...}
+      // `message` carries the specific, human-actionable text; `error` is
+      // just the generic HTTP reason phrase — prefer `message`.
       const parsed = (await response.json()) as { error?: string; message?: string };
-      message = parsed.error ?? parsed.message ?? message;
+      message = parsed.message ?? parsed.error ?? message;
     } catch {
-      /* body wasn't JSON (Spring Security's default 401 often isn't) — keep the fallback message */
+      /* body wasn't JSON — keep the fallback message */
     }
 
     if (response.status === 401 && !authOverride) {

@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   createConsulta,
   deleteConsulta,
+  getClinicalSupport,
   getConsulta,
   listConsultas,
   startConsulta,
@@ -92,5 +93,18 @@ export function useStartConsulta(id: number) {
       queryClient.invalidateQueries({ queryKey: queryKeys.consultas.detail(id) });
       queryClient.invalidateQueries({ queryKey: queryKeys.consultas.list() });
     },
+  });
+}
+
+/**
+ * Read-only and explicitly confirmed safe (GET never triggers the AI
+ * engine) — prepared now per the Phase 2.5 scope, not consumed by any
+ * screen yet. Do not add a mutation hook for `POST /suporte-clinico` until
+ * the narrative + save-then-AI sequencing phase.
+ */
+export function useConsultaClinicalSupport(id: number) {
+  return useQuery({
+    queryKey: queryKeys.consultas.clinicalSupport(id),
+    queryFn: () => getClinicalSupport(id),
   });
 }

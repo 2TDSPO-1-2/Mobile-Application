@@ -53,15 +53,16 @@ export function ConsultasScreen() {
               >
                 <View style={styles.cardRow}>
                   <Text style={{ color: colors.text, fontWeight: '700' }}>
-                    Consulta #{consulta.id}
+                    {consulta.animalNome}
                   </Text>
-                  <StatusBadge {...consultaStatusPresentation(consulta.status)} />
+                  <StatusBadge
+                    label={consulta.statusDescricao}
+                    tone={consultaStatusPresentation(consulta.status).tone}
+                  />
                 </View>
-                {consulta.motivo ? (
-                  <Text style={{ color: colors.textSecondary, marginTop: spacing.xs }}>
-                    {consulta.motivo}
-                  </Text>
-                ) : null}
+                <Text style={{ color: colors.textSecondary, marginTop: spacing.xs }}>
+                  {consulta.motivo}
+                </Text>
               </AppCard>
             ))
         ) : (

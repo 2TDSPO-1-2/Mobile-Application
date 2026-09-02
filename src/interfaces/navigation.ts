@@ -7,9 +7,8 @@ export type AuthStackParamList = {
 
 export type BottomTabParamList = {
   Home: undefined;
-  Agenda: undefined;
-  Animais: undefined;
   Consultas: undefined;
+  Pacientes: undefined;
 };
 
 export type AppStackParamList = {

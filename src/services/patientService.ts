@@ -1,10 +1,10 @@
 import { apiGet } from './apiClient';
 
 /**
- * CONFIRMED shape — matches the example payload given directly in the ArkIve
- * backend contract for GET /api/animais. `sexo` is typed loosely because
- * only "M" appeared in the documented example, not the full value set;
- * `castrado`/`ativo` follow the S/N convention used throughout this schema.
+ * CONFIRMED against the ArkIve Spring Boot source (sibling project
+ * `SPRINT-3/java-advanced`, `AnimalResponse.java`). `sexo` is constrained to
+ * `M`/`F` because `AnimalService.validarSexoQuandoInformado` rejects any
+ * other value; `castrado`/`ativo` follow the same confirmed S/N convention.
  */
 export interface AnimalDto {
   id: number;
@@ -13,22 +13,27 @@ export interface AnimalDto {
   especieNome: string;
   racaId: number | null;
   racaNome: string | null;
-  sexo: string;
+  sexo: 'M' | 'F';
   castrado: 'S' | 'N';
   clinicaId: number | null;
+  clinicaNome: string | null;
   ativo: 'S' | 'N';
 }
 
 /**
- * Whether this list is already scoped to the authenticated veterinarian (or
- * their clinic) is NOT documented anywhere in the available backend
- * contract, and could not be confirmed at runtime — the backend was
- * unreachable throughout this phase (see the Phase 2 report). Treat the
- * result as unscoped until the backend team confirms otherwise: any
- * client-side narrowing applied on top of this (e.g. a search box) is a
- * usability convenience, never an authorization boundary. Do not build
- * security logic on top of this call.
+ * CONFIRMED scoped server-side: `AnimalService.listarAutorizado`'s
+ * VETERINARIO branch calls `animalRepository.buscarParaVeterinario(principal.getVeterinarioId(), ...)`,
+ * returning only animals linked through that veterinarian's own
+ * consultations — not every animal in the system. (Phase 2 had flagged this
+ * as unconfirmed; it no longer is.) Confirmed separately: a VETERINARIO
+ * cannot create/update/delete animals (`AnimalService.requestAutorizadoParaCriacao`
+ * throws `AccessDeniedException` for that role) — this app's read-only
+ * patient list matches the backend's own authorization model, not just a
+ * client-side choice.
+ *
+ * `GET /api/animais` also returns a Spring Data `Page`, not a bare array.
  */
 export async function listPatients(): Promise<AnimalDto[]> {
-  return apiGet<AnimalDto[]>('/api/animais');
+  const page = await apiGet<{ content: AnimalDto[] }>('/api/animais');
+  return page.content;
 }
