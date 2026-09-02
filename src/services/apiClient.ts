@@ -1,4 +1,7 @@
 import { API_BASE_URL } from '../config/api';
+import { encodeBase64 } from '../utils/base64';
+import { getCredentials, type StoredCredentials } from '../storage/credentialStore';
+import { emitUnauthorized } from './authEvents';
 
 export class ApiError extends Error {
   constructor(
@@ -21,59 +24,105 @@ export function isNetworkError(error: unknown): boolean {
   return error instanceof NetworkError || error instanceof TypeError;
 }
 
-export async function apiRequest<T>(
-  path: string,
-  options: RequestInit = {}
-): Promise<T> {
+function buildBasicAuthHeader({ username, password }: StoredCredentials): string {
+  return `Basic ${encodeBase64(`${username}:${password}`)}`;
+}
+
+export interface ApiRequestOptions extends Omit<RequestInit, 'body'> {
+  body?: unknown;
+  /**
+   * Verify a credential pair that hasn't been persisted yet (used only by
+   * the login probe in authService.verifyCredentials). Normal authenticated
+   * traffic must never pass this — it always reads from credentialStore.
+   */
+  authOverride?: StoredCredentials;
+}
+
+async function apiRequest<T>(path: string, options: ApiRequestOptions = {}): Promise<T> {
+  const { body, authOverride, headers: extraHeaders, ...rest } = options;
   const url = `${API_BASE_URL}${path}`;
-  const headers: HeadersInit = {
+
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    ...(options.headers ?? {}),
+    ...(extraHeaders as Record<string, string> | undefined),
   };
 
+  const credentials = authOverride ?? (await getCredentials());
+  if (credentials) {
+    headers.Authorization = buildBasicAuthHeader(credentials);
+  }
+
+  let response: Response;
   try {
-    const response = await fetch(url, { ...options, headers });
-
-    if (!response.ok) {
-      let message = response.statusText;
-      try {
-        const body = (await response.json()) as { error?: string };
-        if (body.error) message = body.error;
-      } catch {
-        /* ignore parse */
-      }
-      throw new ApiError(response.status, message);
-    }
-
-    if (response.status === 204) {
-      return undefined as T;
-    }
-
-    return (await response.json()) as T;
-  } catch (error) {
-    if (error instanceof ApiError) throw error;
+    response = await fetch(url, {
+      ...rest,
+      headers,
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
+  } catch {
     throw new NetworkError();
+  }
+
+  if (!response.ok) {
+    let message = response.statusText || `Erro ${response.status}`;
+    try {
+      const parsed = (await response.json()) as { error?: string; message?: string };
+      message = parsed.error ?? parsed.message ?? message;
+    } catch {
+      /* body wasn't JSON (Spring Security's default 401 often isn't) — keep the fallback message */
+    }
+
+    if (response.status === 401 && !authOverride) {
+      // A 401 on a request that used the *stored* credential means the
+      // session Spring Security accepted before is no longer valid (password
+      // changed, account disabled, ...). A 401 during the login probe
+      // (authOverride set) is an expected, locally-handled outcome instead —
+      // it must not trigger a global sign-out of an already-authenticated user.
+      emitUnauthorized();
+    }
+
+    throw new ApiError(response.status, message);
+  }
+
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
+  try {
+    return (await response.json()) as T;
+  } catch {
+    return undefined as T;
   }
 }
 
-export async function apiGet<T>(path: string): Promise<T> {
-  return apiRequest<T>(path, { method: 'GET' });
+export async function apiGet<T>(path: string, options?: ApiRequestOptions): Promise<T> {
+  return apiRequest<T>(path, { ...options, method: 'GET' });
 }
 
-export async function apiPost<T>(path: string, body: unknown): Promise<T> {
-  return apiRequest<T>(path, {
-    method: 'POST',
-    body: JSON.stringify(body),
-  });
+export async function apiPost<T>(
+  path: string,
+  body?: unknown,
+  options?: ApiRequestOptions
+): Promise<T> {
+  return apiRequest<T>(path, { ...options, method: 'POST', body });
 }
 
-export async function apiPut<T>(path: string, body: unknown): Promise<T> {
-  return apiRequest<T>(path, {
-    method: 'PUT',
-    body: JSON.stringify(body),
-  });
+export async function apiPut<T>(
+  path: string,
+  body?: unknown,
+  options?: ApiRequestOptions
+): Promise<T> {
+  return apiRequest<T>(path, { ...options, method: 'PUT', body });
 }
 
-export async function apiDelete<T>(path: string): Promise<T> {
-  return apiRequest<T>(path, { method: 'DELETE' });
+export async function apiPatch<T>(
+  path: string,
+  body?: unknown,
+  options?: ApiRequestOptions
+): Promise<T> {
+  return apiRequest<T>(path, { ...options, method: 'PATCH', body });
+}
+
+export async function apiDelete<T>(path: string, options?: ApiRequestOptions): Promise<T> {
+  return apiRequest<T>(path, { ...options, method: 'DELETE' });
 }

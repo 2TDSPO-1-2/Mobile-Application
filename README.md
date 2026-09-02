@@ -47,7 +47,7 @@ Turma: `2TDSPO` · FIAP - Unidade Paulista · 2026
 
 ### API publicada
 
-> [Render — ArkIve API](https://arkive-api.onrender.com)
+> [Render — ArkIve API (Spring Boot)](https://arkive-b7v2.onrender.com)
 
 ### Vídeo demonstrativo
 
@@ -336,33 +336,40 @@ O AsyncStorage é usado no app para:
 
 ## Integração com a API
 
-O app publicado no GitHub Pages consome a API publicada no Render:
+> O antigo backend Node.js/Express deste repositório (`ARKIVE/backend/`) foi removido. O app
+> agora se conecta diretamente à **API Spring Boot** do ArkIve — Oracle, Flyway e Spring
+> Security, autenticação HTTP Basic em `/api/**`.
 
 ```txt
-https://arkive-api.onrender.com
+https://arkive-b7v2.onrender.com
 ```
 
-Arquivo de configuração:
+Configuração centralizada em:
 
 ```txt
-ARKIVE/src/config/api.ts
+src/config/api.ts
 ```
 
-Para execução local com backend local, altere o valor de `API_BASE_URL` para:
+Por padrão o app usa a URL acima. Para apontar para outro ambiente (por exemplo, um backend
+rodando na rede local), defina a variável pública `EXPO_PUBLIC_API_URL` (veja `.env.example`) —
+não edite a URL diretamente no código-fonte:
 
-```ts
-export const API_BASE_URL = 'http://localhost:3333';
+```env
+EXPO_PUBLIC_API_URL=http://192.168.15.14:8080
 ```
 
-Para execução em dispositivo físico via Expo Go com backend local, pode ser necessário trocar `localhost` pelo IP local da máquina:
-
-```ts
-export const API_BASE_URL = 'http://192.168.15.14:3333';
-```
+A URL da API não é segredo; **credenciais de veterinário nunca vão em variáveis de ambiente** —
+são digitadas na tela de login e guardadas com `expo-secure-store` (ver
+`src/storage/credentialStore.ts`).
 
 ---
 
-## Endpoints Utilizados
+## Endpoints Utilizados (histórico — backend Node retirado)
+
+> A tabela abaixo documenta os endpoints do antigo backend Node.js/Express (removido). O app
+> agora consome a API Spring Boot (`/api/**`, autenticação HTTP Basic), que ainda está sendo
+> integrada — ver `src/services/consultaService.ts` para o primeiro endpoint real conectado
+> (`GET /api/consultas`).
 
 | Método | Endpoint | Descrição |
 |:------:|:---------|:----------|
@@ -404,89 +411,44 @@ Para executar o projeto, é necessário ter instalado:
 
 ---
 
-## Como Executar o Backend Localmente
+## Como Executar o Backend Localmente (removido)
 
-Acesse a pasta do backend:
-
-```bash
-cd ARKIVE/backend
-```
-
-Instale as dependências:
-
-```bash
-npm install
-```
-
-Execute o servidor:
-
-```bash
-npm run dev
-```
-
-O backend será iniciado em:
-
-```txt
-http://localhost:3333
-```
-
-Validação rápida:
-
-```bash
-curl http://localhost:3333/
-curl http://localhost:3333/health
-```
-
-Resposta esperada em `/`:
-
-```json
-{
-  "status": "ok",
-  "service": "arkive-backend",
-  "message": "ArkIve API online"
-}
-```
-
----
+O backend Node.js/Express que vivia em `ARKIVE/backend/` foi removido deste repositório — não há
+mais um servidor local para instalar/rodar aqui. O app se conecta diretamente à API Spring Boot
+publicada em produção (veja "Integração com a API" acima); rodar essa API localmente é um assunto
+do repositório do backend Spring, não deste.
 
 ## API Publicada no Render
 
-A API também está publicada no Render:
-
 ```txt
-https://arkive-api.onrender.com
+https://arkive-b7v2.onrender.com
 ```
 
-Validação:
-
-```bash
-curl https://arkive-api.onrender.com/
-curl https://arkive-api.onrender.com/health
-```
-
-> Observação: em planos gratuitos, a primeira requisição pode demorar alguns segundos porque o serviço pode entrar em modo de inatividade.
+> Observação: em planos gratuitos, a primeira requisição pode demorar bastante porque o serviço
+> pode entrar em modo de inatividade — trate isso como um estado de carregamento normal, nunca
+> como credencial inválida (ver `src/context/AuthContext.tsx`, estado `unreachable`).
 
 ---
 
-## Configuração Oracle
+## Configuração Oracle (histórico — backend Node retirado)
 
-O backend utiliza `node-oracledb` para conexão com o banco Oracle.
+> **Aviso de segurança:** uma versão anterior deste README publicou aqui, em texto puro, um
+> usuário e senha reais do Oracle FIAP. Esse valor foi removido e a credencial correspondente
+> deve ser considerada comprometida e rotacionada. Nunca commitar credenciais reais — apenas
+> placeholders, como no exemplo abaixo.
 
-Configuração utilizada:
+O antigo backend Node.js/Express (pasta `ARKIVE/backend/`) utilizava `node-oracledb` para conexão
+direta com o banco Oracle. Essa pasta foi removida do repositório: o aplicativo agora se conecta
+à API Spring Boot do ArkIve (veja "Integração com a API" acima). O formato de configuração usado
+pelo backend Node, para referência histórica, era:
 
 ```env
-ORACLE_USER=rm561996
-ORACLE_PASSWORD=230602
+ORACLE_USER=<usuario>
+ORACLE_PASSWORD=<senha>
 ORACLE_CONNECT_STRING=(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=oracle.fiap.com.br)(PORT=1521))(CONNECT_DATA=(SID=ORCL)))
 ```
 
-O arquivo de referência para variáveis de ambiente está em:
-
-```txt
-ARKIVE/backend/.env.example
-```
-
-As credenciais reais devem ser configuradas no ambiente do backend, seja localmente em `.env`, seja no painel do Render.
+Essa configuração não se aplica mais ao aplicativo mobile.
 
 ---
 

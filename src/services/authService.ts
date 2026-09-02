@@ -1,103 +1,70 @@
-import { apiPost, ApiError, isNetworkError } from './apiClient';
-import { mapApiUserToUser, type ApiUserDto } from './apiMappers';
-import type { User, UserRole } from '../types';
-import type { RegisterData } from '../interfaces/navigation';
-import { getJson, setJson } from '../storage/base';
-import { STORAGE_KEYS } from '../storage/keys';
+import { apiGet, ApiError, isNetworkError } from './apiClient';
+import type { StoredCredentials } from '../storage/credentialStore';
 
-export async function loginWithApi(
-  identifier: string,
-  password: string,
-  role: UserRole,
-  autoLogin: boolean
-): Promise<{ user: User | null; error: string | null; offline: boolean }> {
-  const id = identifier.trim();
-  const pwd = password.trim();
+export type CredentialVerificationResult =
+  | { ok: true }
+  | {
+      ok: false;
+      reason: 'invalid' | 'forbidden' | 'unreachable' | 'unknown';
+      message: string;
+    };
 
-  if (!id || !pwd) {
-    return { user: null, error: 'Preencha CPF/CRMV e senha.', offline: false };
-  }
-
+/**
+ * Spring Security exposes no dedicated /login endpoint — auth for /api/**
+ * is plain HTTP Basic, checked independently on every request. So "logging
+ * in" on the mobile app means: try a real protected request with the
+ * credential pair and see whether Spring accepts it.
+ *
+ * GET /api/consultas is used as that probe because it's the one documented
+ * endpoint squarely in the VETERINARIO operational flow this app serves.
+ * This assumption is isolated to this one function on purpose — if the
+ * backend team later points at a more appropriate identity/whoami endpoint,
+ * only this function needs to change.
+ */
+export async function verifyCredentials(
+  credentials: StoredCredentials
+): Promise<CredentialVerificationResult> {
   try {
-    const response = await apiPost<{ user: ApiUserDto }>('/auth/login', {
-      role,
-      identifier: id,
-      password: pwd,
-    });
-    const user = mapApiUserToUser(response.user, { autoLogin });
-    await cacheCurrentUser(user);
-    return { user, error: null, offline: false };
+    await apiGet('/api/consultas', { authOverride: credentials });
+    return { ok: true };
   } catch (error) {
     if (error instanceof ApiError) {
-      return { user: null, error: error.message, offline: false };
-    }
-    if (isNetworkError(error)) {
+      if (error.status === 401) {
+        return {
+          ok: false,
+          reason: 'invalid',
+          message: 'Usuário ou senha inválidos.',
+        };
+      }
+
+      if (error.status === 403) {
+        return {
+          ok: false,
+          reason: 'forbidden',
+          message: 'Este usuário não tem acesso ao aplicativo do veterinário.',
+        };
+      }
+
       return {
-        user: null,
-        error: 'Sem conexão com o servidor. Verifique a API em http://localhost:3333',
-        offline: true,
+        ok: false,
+        reason: 'unknown',
+        message: 'Não foi possível validar suas credenciais agora. Tente novamente.',
       };
     }
-    return { user: null, error: 'Erro ao entrar.', offline: false };
-  }
-}
 
-export async function registerWithApi(
-  data: RegisterData
-): Promise<{ user: User | null; error: string | null; offline: boolean }> {
-  const role: UserRole = data.isVeterinarian ? 'veterinario' : 'tutor';
-  const cpf = data.cpf.replace(/\D/g, '');
-  const password = data.password.trim();
-
-  if (!data.name.trim() || !password) {
-    return { user: null, error: 'Nome e senha são obrigatórios.', offline: false };
-  }
-  if (!cpf) {
-    return { user: null, error: 'CPF é obrigatório.', offline: false };
-  }
-  if (role === 'veterinario' && !data.crmv?.trim()) {
-    return { user: null, error: 'CRMV é obrigatório.', offline: false };
-  }
-
-  try {
-    const response = await apiPost<{ user: ApiUserDto }>('/auth/register', {
-      role,
-      name: data.name.trim(),
-      email: data.email.trim(),
-      phone: data.phone.trim(),
-      password,
-      cpf,
-      crmv: data.isVeterinarian ? data.crmv!.trim() : undefined,
-    });
-    const user = mapApiUserToUser(response.user, {
-      autoLogin: data.autoLogin ?? true,
-    });
-    await cacheCurrentUser(user);
-    return { user, error: null, offline: false };
-  } catch (error) {
-    if (error instanceof ApiError) {
-      return { user: null, error: error.message, offline: false };
-    }
     if (isNetworkError(error)) {
       return {
-        user: null,
-        error: 'Sem conexão. Cadastro requer API ativa.',
-        offline: true,
+        ok: false,
+        reason: 'unreachable',
+        message:
+          'Servidor indisponível no momento. O ArkIve pode estar iniciando — tente novamente em instantes.',
       };
     }
-    return { user: null, error: 'Erro ao cadastrar.', offline: false };
+
+    return {
+      ok: false,
+      reason: 'unknown',
+      message: 'Erro inesperado ao validar credenciais.',
+    };
   }
-}
-
-export async function cacheCurrentUser(user: User): Promise<void> {
-  await setJson(STORAGE_KEYS.currentUser, user);
-  const users = await getJson<User[]>(STORAGE_KEYS.users, []);
-  const index = users.findIndex((u) => u.id === user.id);
-  if (index >= 0) users[index] = user;
-  else users.push(user);
-  await setJson(STORAGE_KEYS.users, users);
-}
-
-export async function getCachedCurrentUser(): Promise<User | null> {
-  return getJson<User | null>(STORAGE_KEYS.currentUser, null);
 }

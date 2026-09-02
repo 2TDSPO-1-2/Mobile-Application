@@ -3,9 +3,7 @@ import {
   View,
   Text,
   Image,
-  Pressable,
   StyleSheet,
-  Switch,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
@@ -17,8 +15,7 @@ import { AppButton } from '../components/AppButton';
 import { useAuth } from '../hooks/useAuth';
 import { useThemeColors } from '../hooks/useThemeColors';
 import type { AuthStackParamList } from '../interfaces/navigation';
-import type { UserRole } from '../types';
-import { spacing, fontSize, radius } from '../styles/theme';
+import { spacing, fontSize } from '../styles/theme';
 
 export function LoginScreen() {
   const navigation =
@@ -26,10 +23,8 @@ export function LoginScreen() {
   const { login } = useAuth();
   const colors = useThemeColors();
 
-  const [role, setRole] = useState<UserRole>('tutor');
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
-  const [autoLogin, setAutoLogin] = useState(true);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -37,15 +32,14 @@ export function LoginScreen() {
     setError('');
 
     const id = identifier.trim();
-    const pwd = password.trim();
 
-    if (!id || !pwd) {
-      setError('Preencha CPF/CRMV e senha.');
+    if (!id || !password) {
+      setError('Preencha usuário e senha.');
       return;
     }
 
     setLoading(true);
-    const err = await login(id, pwd, role, autoLogin);
+    const err = await login(id, password);
     setLoading(false);
 
     if (err) setError(err);
@@ -61,48 +55,17 @@ export function LoginScreen() {
             resizeMode="cover"
           />
           <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-            Gestão veterinária otimizada
+            Acesso do veterinário
           </Text>
         </View>
 
-        <View style={styles.roleRow}>
-          <Pressable
-            onPress={() => setRole('tutor')}
-            style={[
-              styles.roleBtn,
-              {
-                backgroundColor: role === 'tutor' ? colors.primary : colors.surface,
-                borderColor: colors.border,
-              },
-            ]}
-          >
-            <Text style={{ color: role === 'tutor' ? '#FFF' : colors.text }}>Tutor</Text>
-          </Pressable>
-
-          <Pressable
-            onPress={() => setRole('veterinario')}
-            style={[
-              styles.roleBtn,
-              {
-                backgroundColor:
-                  role === 'veterinario' ? colors.primary : colors.surface,
-                borderColor: colors.border,
-              },
-            ]}
-          >
-            <Text style={{ color: role === 'veterinario' ? '#FFF' : colors.text }}>
-              Veterinário
-            </Text>
-          </Pressable>
-        </View>
-
         <AppInput
-          label={role === 'tutor' ? 'CPF' : 'CRMV'}
-          placeholder={role === 'tutor' ? 'Digite seu CPF' : 'Digite seu CRMV'}
+          label="Usuário"
+          placeholder="CRMV ou login do veterinário"
           value={identifier}
           onChangeText={setIdentifier}
-          keyboardType={role === 'tutor' ? 'numeric' : 'default'}
-          autoCapitalize={role === 'veterinario' ? 'characters' : 'none'}
+          autoCapitalize="none"
+          autoCorrect={false}
         />
 
         <AppInput
@@ -112,15 +75,6 @@ export function LoginScreen() {
           onChangeText={setPassword}
           secureTextEntry
         />
-
-        <View style={styles.switchRow}>
-          <Text style={{ color: colors.text }}>Início automático</Text>
-          <Switch
-            value={autoLogin}
-            onValueChange={setAutoLogin}
-            trackColor={{ true: colors.primary }}
-          />
-        </View>
 
         {error ? (
           <Text style={[styles.error, { color: colors.error }]}>{error}</Text>
@@ -154,20 +108,6 @@ const styles = StyleSheet.create({
     fontSize: fontSize.md,
     marginTop: spacing.xs,
     textAlign: 'center',
-  },
-  roleRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md },
-  roleBtn: {
-    flex: 1,
-    padding: spacing.md,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    alignItems: 'center',
-  },
-  switchRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.md,
   },
   error: { textAlign: 'center', marginBottom: spacing.sm },
 });

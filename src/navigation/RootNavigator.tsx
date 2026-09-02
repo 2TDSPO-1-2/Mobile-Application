@@ -6,15 +6,16 @@ import { useAuth } from '../hooks/useAuth';
 import { useThemeColors } from '../hooks/useThemeColors';
 import { AuthStack } from './AuthStack';
 import { AppStack } from './AppStack';
+import { BackendUnavailableScreen } from '../screens/BackendUnavailableScreen';
 import type { RootStackParamList } from '../interfaces/navigation';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export function RootNavigator() {
-  const { user, loading } = useAuth();
+  const { status } = useAuth();
   const colors = useThemeColors();
 
-  if (loading) {
+  if (status === 'initializing') {
     return (
       <View style={[styles.loading, { backgroundColor: colors.background }]}>
         <ActivityIndicator size="large" color={colors.primary} />
@@ -22,10 +23,17 @@ export function RootNavigator() {
     );
   }
 
+  // A stored credential exists but couldn't be confirmed against the
+  // backend — never fall through to the login screen here, that would ask
+  // for a password that may well still be correct.
+  if (status === 'unreachable') {
+    return <BackendUnavailableScreen />;
+  }
+
   return (
-    <NavigationContainer key={user ? `app-${user.id}` : 'auth'}>
+    <NavigationContainer key={status}>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
-        {user ? (
+        {status === 'authenticated' ? (
           <Stack.Screen name="App" component={AppStack} />
         ) : (
           <Stack.Screen name="Auth" component={AuthStack} />

@@ -4,6 +4,7 @@ import type { BottomTabParamList } from '../interfaces/navigation';
 import { HomeScreen } from '../screens/HomeScreen';
 import { AgendaScreen } from '../screens/AgendaScreen';
 import { AnimalsScreen } from '../screens/AnimalsScreen';
+import { ConsultasScreen } from '../screens/ConsultasScreen';
 import { useThemeColors } from '../hooks/useThemeColors';
 import { fontSize } from '../styles/theme';
 
@@ -39,6 +40,11 @@ export function BottomTabs() {
         name="Animais"
         component={AnimalsScreen}
         options={{ tabBarLabel: 'Animais' }}
+      />
+      <Tab.Screen
+        name="Consultas"
+        component={ConsultasScreen}
+        options={{ tabBarLabel: 'Consultas' }}
       />
     </Tab.Navigator>
   );

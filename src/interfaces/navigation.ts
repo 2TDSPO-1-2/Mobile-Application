@@ -9,6 +9,7 @@ export type BottomTabParamList = {
   Home: undefined;
   Agenda: undefined;
   Animais: undefined;
+  Consultas: undefined;
 };
 
 export type AppStackParamList = {
@@ -53,28 +54,36 @@ export interface AppointmentFormData {
   notes: string;
 }
 
-export interface UserContextValue {
-  user: import('../types').User | null;
-  role: UserRole | null;
-  loading: boolean;
-  login: (
-    identifier: string,
-    password: string,
-    role: UserRole,
-    autoLogin?: boolean
-  ) => Promise<string | null>;
-  register: (data: RegisterData) => Promise<string | null>;
-  logout: () => Promise<void>;
-  refreshUser: () => Promise<void>;
-}
+/**
+ * `initializing` — SecureStore/backend revalidation on app start hasn't
+ *   resolved yet; navigation must not render Auth or App yet.
+ * `authenticated` — a credential pair was accepted by Spring on this session.
+ * `unauthenticated` — no credential stored, or it was confirmed invalid/forbidden.
+ * `unreachable` — a stored credential exists but the backend couldn't be
+ *   reached to confirm it (Render cold start, network drop, 5xx). The
+ *   credential is kept — this is deliberately not the same as "logged out".
+ */
+export type AuthStatus = 'initializing' | 'authenticated' | 'unauthenticated' | 'unreachable';
 
-export interface RegisterData {
-  name: string;
-  email: string;
-  phone: string;
-  password: string;
-  cpf: string;
-  isVeterinarian: boolean;
-  crmv?: string;
-  autoLogin?: boolean;
+export interface AuthContextValue {
+  status: AuthStatus;
+  /** The authenticated veterinarian's login identifier, or null when signed out. */
+  username: string | null;
+  /**
+   * @deprecated Compatibility shim for screens still built against the old
+   * (deleted) Node-backend User model — Animais/Agenda/Avaliações/Feedback
+   * and friends. Spring exposes no profile endpoint yet, so this is a
+   * minimal synthetic object (id/name mirror the login username; everything
+   * else is blank) rather than real backend profile data. Do not extend it —
+   * migrate those screens to their own Spring-backed data instead.
+   */
+  user: import('../types').User | null;
+  /** @deprecated always 'veterinario' once authenticated — kept only so old screens' role branches keep compiling. */
+  role: UserRole | null;
+  /** @deprecated alias for `status === 'initializing'`. */
+  loading: boolean;
+  login: (username: string, password: string) => Promise<string | null>;
+  logout: () => Promise<void>;
+  /** Re-runs credential verification against the backend (e.g. to leave the `unreachable` state). */
+  refreshUser: () => Promise<void>;
 }

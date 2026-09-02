@@ -26,14 +26,6 @@ export interface User {
   login?: string;
 }
 
-export interface Session {
-  userId: string;
-  role: UserRole;
-  responsavelId?: number;
-  veterinarioId?: number;
-  login?: string;
-}
-
 export interface Animal {
   id: string;
   tutorId: string;
