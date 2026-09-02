@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { View, Text, StyleSheet, Alert } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AppHeader } from '../components/AppHeader';
 import { ScreenContainer } from '../components/ScreenContainer';
 import { AppCard } from '../components/AppCard';
@@ -40,7 +41,7 @@ function formatDataHora(value: string): string {
 
 export function ConsultaDetailScreen() {
   const route = useRoute<RouteProp<AppStackParamList, 'ConsultaDetalhe'>>();
-  const navigation = useNavigation();
+  const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
   const colors = useThemeColors();
   const { consultaId } = route.params;
 
@@ -318,6 +319,12 @@ export function ConsultaDetailScreen() {
             ) : confirmedDiagnosis ? (
               <ConfirmedDiagnosisCard diagnosis={confirmedDiagnosis} conclusao={consulta.observacao} />
             ) : null}
+
+            <AppButton
+              title="Prescrições"
+              variant="outline"
+              onPress={() => navigation.navigate('Prescricoes', { consultaId: consulta.id })}
+            />
 
             <Text style={{ color: colors.textSecondary, marginBottom: spacing.md }}>
               Consulta encerrada — registro somente leitura.

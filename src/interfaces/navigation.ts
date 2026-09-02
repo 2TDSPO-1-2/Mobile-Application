@@ -19,6 +19,10 @@ export type AppStackParamList = {
   NovaConsulta: { animalId?: string };
   ConsultaDetalhe: { consultaId: number };
   CriarConsulta: undefined;
+  Prescricoes: { consultaId: number };
+  NovaPrescricao: { consultaId: number };
+  PrescricaoDetalhe: { prescricaoId: number; consultaId: number };
+  EditarPrescricao: { prescricaoId: number; consultaId: number };
   Avaliacoes: undefined;
   NovaAvaliacao: { appointmentId: string };
   Feedback: { appointmentId?: string; targetUserId?: string };

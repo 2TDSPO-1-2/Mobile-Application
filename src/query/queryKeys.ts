@@ -21,4 +21,10 @@ export const queryKeys = {
     byConsulta: (consultaId: string | number) =>
       [...queryKeys.diagnosticos.all, 'by-consulta', consultaId] as const,
   },
+  prescricoes: {
+    all: ['prescricoes'] as const,
+    byConsulta: (consultaId: string | number) =>
+      [...queryKeys.prescricoes.all, 'by-consulta', consultaId] as const,
+    detail: (id: string | number) => [...queryKeys.prescricoes.all, 'detail', id] as const,
+  },
 };
