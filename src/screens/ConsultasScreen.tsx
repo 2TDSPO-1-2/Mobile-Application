@@ -1,24 +1,27 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { HomeHeader } from '../components/HomeHeader';
 import { ScreenContainer } from '../components/ScreenContainer';
 import { AppCard } from '../components/AppCard';
-import { AppButton } from '../components/AppButton';
+import { StatusBadge } from '../components/StatusBadge';
 import { EmptyState } from '../components/EmptyState';
 import { useThemeColors } from '../hooks/useThemeColors';
 import { useConsultas } from '../hooks/useConsultas';
+import { consultaStatusPresentation } from '../utils/statusPresentation';
+import { commonStyles } from '../styles/common';
+import type { AppStackParamList } from '../interfaces/navigation';
 import { spacing, fontSize } from '../styles/theme';
 
 /**
- * Deliberately minimal: this screen exists to prove the real Spring Boot +
- * TanStack Query pipeline end-to-end (query hook -> service -> apiClient ->
- * GET /api/consultas -> real response), not to deliver the consultation
- * feature. No patient names, no detail view, no actions — that's the next
- * phase. No mock fallback: a failed request renders a real error, never
- * substitute data.
+ * Real veterinarian consultation list — GET /api/consultas via TanStack
+ * Query, no mock fallback. A failed request renders a real error state; an
+ * empty response renders a real empty state.
  */
 export function ConsultasScreen() {
   const colors = useThemeColors();
+  const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
   const { data, isPending, isError, error, refetch, isRefetching } = useConsultas();
 
   return (
@@ -35,19 +38,32 @@ export function ConsultasScreen() {
         ) : isError ? (
           <EmptyState
             title="Não foi possível carregar"
-            message={
-              error instanceof Error ? error.message : 'Erro ao consultar o servidor.'
-            }
+            message={error instanceof Error ? error.message : 'Erro ao consultar o servidor.'}
           />
         ) : data && data.length > 0 ? (
-          data.map((consulta) => (
-            <AppCard key={consulta.id}>
-              <Text style={{ color: colors.text, fontWeight: '700' }}>
-                Consulta #{consulta.id}
-              </Text>
-              <Text style={{ color: colors.textSecondary }}>Status: {consulta.status}</Text>
-            </AppCard>
-          ))
+          data
+            .slice()
+            .sort((a, b) => b.id - a.id)
+            .map((consulta) => (
+              <AppCard
+                key={consulta.id}
+                onPress={() =>
+                  navigation.navigate('ConsultaDetalhe', { consultaId: consulta.id })
+                }
+              >
+                <View style={styles.cardRow}>
+                  <Text style={{ color: colors.text, fontWeight: '700' }}>
+                    Consulta #{consulta.id}
+                  </Text>
+                  <StatusBadge {...consultaStatusPresentation(consulta.status)} />
+                </View>
+                {consulta.motivo ? (
+                  <Text style={{ color: colors.textSecondary, marginTop: spacing.xs }}>
+                    {consulta.motivo}
+                  </Text>
+                ) : null}
+              </AppCard>
+            ))
         ) : (
           <EmptyState
             title="Nenhuma consulta"
@@ -55,13 +71,21 @@ export function ConsultasScreen() {
           />
         )}
 
-        <AppButton
-          title="Atualizar"
-          variant="outline"
-          onPress={() => refetch()}
-          loading={isRefetching}
-        />
+        <Pressable
+          style={[commonStyles.fab, { backgroundColor: colors.primary }]}
+          onPress={() => navigation.navigate('CriarConsulta')}
+        >
+          <Text style={styles.fabText}>+</Text>
+        </Pressable>
       </ScreenContainer>
+
+      {!isPending && !isError ? (
+        <Pressable style={styles.refreshHint} onPress={() => refetch()} disabled={isRefetching}>
+          <Text style={{ color: colors.primary, fontSize: fontSize.xs }}>
+            {isRefetching ? 'Atualizando...' : 'Atualizar lista'}
+          </Text>
+        </Pressable>
+      ) : null}
     </View>
   );
 }
@@ -74,4 +98,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: spacing.md,
   },
+  cardRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  fabText: { color: '#FFF', fontSize: 28, fontWeight: '300' },
+  refreshHint: { alignSelf: 'center', marginBottom: spacing.md },
 });

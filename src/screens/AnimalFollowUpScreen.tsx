@@ -6,6 +6,7 @@ import { ScreenContainer } from '../components/ScreenContainer';
 import { SearchBar } from '../components/SearchBar';
 import { AppCard } from '../components/AppCard';
 import { StatusBadge } from '../components/StatusBadge';
+import { appointmentStatusPresentation } from '../utils/statusPresentation';
 import { useThemeColors } from '../hooks/useThemeColors';
 import type { AppStackParamList } from '../interfaces/navigation';
 import type { Animal, Appointment } from '../types';
@@ -81,7 +82,7 @@ export function AnimalFollowUpScreen() {
               <Text style={{ color: colors.text, fontWeight: '600' }}>
                 {apt.date} às {apt.time}
               </Text>
-              <StatusBadge status={apt.status} />
+              <StatusBadge {...appointmentStatusPresentation(apt.status)} />
             </View>
             {apt.notes ? (
               <Text style={{ color: colors.textSecondary, marginTop: spacing.xs }}>

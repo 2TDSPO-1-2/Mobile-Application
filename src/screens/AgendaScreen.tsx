@@ -8,6 +8,7 @@ import { SearchBar } from '../components/SearchBar';
 import { AppCard } from '../components/AppCard';
 import { AppButton } from '../components/AppButton';
 import { StatusBadge } from '../components/StatusBadge';
+import { appointmentStatusPresentation } from '../utils/statusPresentation';
 import { EmptyState } from '../components/EmptyState';
 import { useAuth } from '../hooks/useAuth';
 import { useThemeColors } from '../hooks/useThemeColors';
@@ -160,7 +161,7 @@ export function AgendaScreen() {
           <Text style={[styles.animal, { color: colors.text }]}>
             {animalNames[appointment.animalId] ?? 'Animal'}
           </Text>
-          <StatusBadge status={appointment.status} />
+          <StatusBadge {...appointmentStatusPresentation(appointment.status)} />
         </View>
 
         <Text style={{ color: colors.textSecondary }}>

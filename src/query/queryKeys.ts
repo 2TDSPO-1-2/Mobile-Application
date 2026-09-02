@@ -10,4 +10,8 @@ export const queryKeys = {
     list: () => [...queryKeys.consultas.all, 'list'] as const,
     detail: (id: string | number) => [...queryKeys.consultas.all, 'detail', id] as const,
   },
+  patients: {
+    all: ['patients'] as const,
+    list: () => [...queryKeys.patients.all, 'list'] as const,
+  },
 };
