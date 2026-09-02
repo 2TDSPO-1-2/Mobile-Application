@@ -8,6 +8,10 @@ import { AnimalFollowUpScreen } from '../screens/AnimalFollowUpScreen';
 import { NewAppointmentScreen } from '../screens/NewAppointmentScreen';
 import { ConsultaDetailScreen } from '../screens/ConsultaDetailScreen';
 import { NewConsultaScreen } from '../screens/NewConsultaScreen';
+import { PrescricoesScreen } from '../screens/PrescricoesScreen';
+import { NewPrescricaoScreen } from '../screens/NewPrescricaoScreen';
+import { PrescricaoDetailScreen } from '../screens/PrescricaoDetailScreen';
+import { EditPrescricaoScreen } from '../screens/EditPrescricaoScreen';
 import { EvaluationsScreen } from '../screens/EvaluationsScreen';
 import { NewEvaluationScreen } from '../screens/NewEvaluationScreen';
 import { FeedbackScreen } from '../screens/FeedbackScreen';
@@ -36,6 +40,10 @@ export function AppStack() {
       <Stack.Screen name="NovaConsulta" component={NewAppointmentScreen} />
       <Stack.Screen name="ConsultaDetalhe" component={ConsultaDetailScreen} />
       <Stack.Screen name="CriarConsulta" component={NewConsultaScreen} />
+      <Stack.Screen name="Prescricoes" component={PrescricoesScreen} />
+      <Stack.Screen name="NovaPrescricao" component={NewPrescricaoScreen} />
+      <Stack.Screen name="PrescricaoDetalhe" component={PrescricaoDetailScreen} />
+      <Stack.Screen name="EditarPrescricao" component={EditPrescricaoScreen} />
       <Stack.Screen name="Avaliacoes" component={EvaluationsScreen} />
       <Stack.Screen name="NovaAvaliacao" component={NewEvaluationScreen} />
       <Stack.Screen name="Feedback" component={FeedbackScreen} />

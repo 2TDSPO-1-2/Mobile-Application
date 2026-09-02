@@ -53,3 +53,34 @@ export function describeFinalizeError(error: unknown): string {
   }
   return 'Não foi possível finalizar a consulta agora.';
 }
+
+/**
+ * Translates a prescription create/update/delete failure. The 409 case is
+ * confirmed to mean one specific thing server-side
+ * (`PrescricaoService.exigirSemAdesaoRegistrada`): the prescription already
+ * has an adherence record and can no longer be changed or removed.
+ */
+export function describePrescricaoError(error: unknown): string {
+  if (error instanceof ApiError) {
+    if (error.status === 400) {
+      return 'Verifique os dados da prescrição e tente novamente.';
+    }
+    if (error.status === 403) {
+      return 'Você não tem permissão para esta prescrição.';
+    }
+    if (error.status === 404) {
+      return 'Esta prescrição não foi encontrada.';
+    }
+    if (error.status === 409) {
+      return 'Esta prescrição já possui registro de adesão e não pode mais ser alterada ou excluída.';
+    }
+    if (error.status >= 500) {
+      return 'Não foi possível salvar a prescrição agora. Tente novamente em instantes.';
+    }
+    return 'Não foi possível salvar a prescrição agora.';
+  }
+  if (isNetworkError(error)) {
+    return 'Sem conexão com o servidor. A prescrição não foi salva — tente novamente.';
+  }
+  return 'Não foi possível salvar a prescrição agora.';
+}
