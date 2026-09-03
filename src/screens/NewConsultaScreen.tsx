@@ -1,22 +1,27 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AppHeader } from '../components/AppHeader';
 import { ScreenContainer } from '../components/ScreenContainer';
 import { AppInput } from '../components/AppInput';
 import { AppButton } from '../components/AppButton';
+import { AppCard } from '../components/AppCard';
+import { SearchBar } from '../components/SearchBar';
 import { DateField } from '../components/DateField';
 import { TimeField } from '../components/TimeField';
 import { EmptyState } from '../components/EmptyState';
 import { useThemeColors } from '../hooks/useThemeColors';
-import { usePatients } from '../hooks/usePatients';
+import { useClinicPatients } from '../hooks/usePatients';
 import { useConsultas, useCreateConsulta } from '../hooks/useConsultas';
+import type { AnimalDto } from '../services/patientService';
 import type { Modalidade } from '../services/consultaService';
 import type { AppStackParamList } from '../interfaces/navigation';
 import { spacing, fontSize, radius } from '../styles/theme';
+import { commonStyles } from '../styles/common';
 
 const MODALIDADES: Modalidade[] = ['PRESENCIAL', 'REMOTA'];
+const SEARCH_DEBOUNCE_MS = 300;
 
 /**
  * Builds the exact `LocalDateTime` string Spring expects — local wall-clock
@@ -34,9 +39,9 @@ function toLocalDateTimeString(date: Date, time: Date): string {
 
 export function NewConsultaScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
+  const route = useRoute<RouteProp<AppStackParamList, 'CriarConsulta'>>();
   const colors = useThemeColors();
 
-  const { data: patients, isPending: patientsLoading, isError: patientsError } = usePatients();
   // The backend has no endpoint for "which veterinarian am I" (see
   // consultaService.ts). Since GET /api/consultas is scoped server-side to
   // the authenticated veterinarian, any consultation already in that list
@@ -47,12 +52,43 @@ export function NewConsultaScreen() {
 
   const createMutation = useCreateConsulta();
 
-  const [animalId, setAnimalId] = useState<number | null>(null);
+  const [selectedAnimal, setSelectedAnimal] = useState<AnimalDto | null>(null);
+  const [changingPatient, setChangingPatient] = useState(true);
+  const [searchInput, setSearchInput] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [modalidade, setModalidade] = useState<Modalidade | null>(null);
   const [date, setDate] = useState<Date | null>(null);
   const [time, setTime] = useState<Date | null>(null);
   const [motivo, setMotivo] = useState('');
   const [error, setError] = useState('');
+
+  // Returning from "Cadastrar novo paciente" pops back to this exact screen
+  // instance with the new patient in params — preselect it without touching
+  // modalidade/date/time/motivo already typed.
+  useEffect(() => {
+    const preselected = route.params?.preselectedAnimal;
+    if (preselected) {
+      setSelectedAnimal(preselected);
+      setChangingPatient(false);
+    }
+  }, [route.params?.preselectedAnimal]);
+
+  useEffect(() => {
+    const timeout = setTimeout(() => setDebouncedSearch(searchInput), SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(timeout);
+  }, [searchInput]);
+
+  const trimmedSearch = debouncedSearch.trim();
+  const {
+    data: searchResults,
+    isPending: searchPending,
+    isError: searchError,
+  } = useClinicPatients({ nome: trimmedSearch }, { enabled: trimmedSearch.length > 0 });
+
+  const handleSelectAnimal = (animal: AnimalDto) => {
+    setSelectedAnimal(animal);
+    setChangingPatient(false);
+  };
 
   const canIdentifyVeterinario = !resolvingVeterinario && veterinarioId != null;
 
@@ -63,7 +99,7 @@ export function NewConsultaScreen() {
       setError('Não foi possível identificar o veterinário autenticado.');
       return;
     }
-    if (!animalId) {
+    if (!selectedAnimal) {
       setError('Selecione um paciente.');
       return;
     }
@@ -86,7 +122,7 @@ export function NewConsultaScreen() {
 
     try {
       const created = await createMutation.mutateAsync({
-        animalId,
+        animalId: selectedAnimal.id,
         veterinarioId,
         modalidade,
         dataHora: toLocalDateTimeString(date, time),
@@ -120,48 +156,88 @@ export function NewConsultaScreen() {
           />
         ) : (
           <>
-            <Text style={[styles.label, { color: colors.text }]}>Paciente</Text>
+            <Text style={[commonStyles.label, { color: colors.text }]}>Paciente</Text>
 
-            {patientsLoading ? (
-              <Text style={{ color: colors.textSecondary }}>Carregando pacientes...</Text>
-            ) : patientsError ? (
-              <EmptyState
-                title="Não foi possível carregar pacientes"
-                message="Verifique a conexão com o servidor e tente novamente."
-              />
-            ) : !patients || patients.length === 0 ? (
-              <EmptyState title="Nenhum paciente disponível" />
+            {selectedAnimal && !changingPatient ? (
+              <AppCard onPress={() => setChangingPatient(true)}>
+                <View style={commonStyles.rowBetween}>
+                  <View>
+                    <Text style={{ color: colors.text, fontWeight: '700' }}>{selectedAnimal.nome}</Text>
+                    <Text style={{ color: colors.textSecondary, fontSize: fontSize.xs }}>
+                      {selectedAnimal.especieNome}
+                      {selectedAnimal.racaNome ? ` · ${selectedAnimal.racaNome}` : ''}
+                    </Text>
+                  </View>
+                  <Text style={{ color: colors.success, fontSize: fontSize.lg, fontWeight: '700' }}>✓</Text>
+                </View>
+              </AppCard>
             ) : (
-              patients.map((animal) => (
-                <Pressable
-                  key={animal.id}
-                  onPress={() => setAnimalId(animal.id)}
-                  style={[
-                    styles.optionBtn,
-                    {
-                      backgroundColor:
-                        animalId === animal.id ? colors.primaryLight : colors.surface,
-                      borderColor: colors.border,
-                    },
-                  ]}
-                >
-                  <Text
-                    style={{
-                      color: colors.text,
-                      fontWeight: animalId === animal.id ? '700' : '400',
-                    }}
-                  >
-                    {animal.nome}
+              <>
+                <SearchBar
+                  value={searchInput}
+                  onChangeText={setSearchInput}
+                  placeholder="Buscar paciente da clínica..."
+                />
+
+                {trimmedSearch.length === 0 ? null : searchPending ? (
+                  <Text style={{ color: colors.textSecondary, marginBottom: spacing.sm }}>
+                    Buscando pacientes...
                   </Text>
-                  <Text style={{ color: colors.textSecondary, fontSize: fontSize.xs }}>
-                    {animal.especieNome}
-                    {animal.racaNome ? ` · ${animal.racaNome}` : ''}
+                ) : searchError ? (
+                  <EmptyState
+                    title="Não foi possível buscar pacientes"
+                    message="Verifique a conexão com o servidor e tente novamente."
+                  />
+                ) : searchResults && searchResults.length > 0 ? (
+                  searchResults.map((animal) => (
+                    <Pressable
+                      key={animal.id}
+                      onPress={() => handleSelectAnimal(animal)}
+                      style={[
+                        styles.optionBtn,
+                        {
+                          backgroundColor:
+                            selectedAnimal?.id === animal.id ? colors.primaryTint : colors.surface,
+                          borderColor: colors.border,
+                        },
+                      ]}
+                    >
+                      <View>
+                        <Text
+                          style={{
+                            color: colors.text,
+                            fontWeight: selectedAnimal?.id === animal.id ? '700' : '400',
+                          }}
+                        >
+                          {animal.nome}
+                        </Text>
+                        <Text style={{ color: colors.textSecondary, fontSize: fontSize.xs }}>
+                          {animal.especieNome}
+                          {animal.racaNome ? ` · ${animal.racaNome}` : ''}
+                        </Text>
+                      </View>
+                      {selectedAnimal?.id === animal.id ? (
+                        <Text style={{ color: colors.success, fontWeight: '700' }}>✓</Text>
+                      ) : null}
+                    </Pressable>
+                  ))
+                ) : (
+                  <Text style={{ color: colors.textSecondary, marginBottom: spacing.sm }}>
+                    Nenhum paciente encontrado com esse nome.
                   </Text>
-                </Pressable>
-              ))
+                )}
+
+                {trimmedSearch.length > 0 && !searchPending ? (
+                  <AppButton
+                    title="+ Cadastrar novo paciente"
+                    variant="ghost"
+                    onPress={() => navigation.navigate('NovoPaciente')}
+                  />
+                ) : null}
+              </>
             )}
 
-            <Text style={[styles.label, { color: colors.text }]}>Modalidade</Text>
+            <Text style={[commonStyles.label, { color: colors.text, marginTop: spacing.md }]}>Modalidade</Text>
             <View style={styles.chipRow}>
               {MODALIDADES.map((option) => (
                 <Pressable
@@ -209,10 +285,12 @@ export function NewConsultaScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  label: { fontSize: fontSize.sm, fontWeight: '600', marginBottom: spacing.sm },
   chipRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md },
   chip: { paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: radius.md, borderWidth: 1 },
   optionBtn: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     padding: spacing.md,
     borderRadius: radius.md,
     borderWidth: 1,

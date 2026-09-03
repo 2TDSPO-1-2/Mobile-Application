@@ -67,7 +67,7 @@ export function LoginScreen() {
           >
             <Image
               source={require('../assets/branding/definitive.png')}
-              style={styles.logo}
+              style={[styles.logo, styles.logoTint]}
               resizeMode="contain"
             />
 
@@ -124,6 +124,12 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 96,
     marginBottom: spacing.lg,
+  },
+  // Forces the logo artwork to pure black regardless of source-asset shading
+  // or theme — the PNG has a real alpha channel, so tintColor only recolors
+  // the glyph itself, never the transparent background around it.
+  logoTint: {
+    tintColor: '#000000',
   },
   error: { fontSize: fontSize.sm, textAlign: 'center', marginBottom: spacing.sm },
   registerLink: { marginTop: spacing.sm },

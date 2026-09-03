@@ -1,24 +1,37 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { HomeHeader } from '../components/HomeHeader';
 import { ScreenContainer } from '../components/ScreenContainer';
 import { SearchBar } from '../components/SearchBar';
 import { AppCard } from '../components/AppCard';
 import { EmptyState } from '../components/EmptyState';
 import { useThemeColors } from '../hooks/useThemeColors';
-import { usePatients } from '../hooks/usePatients';
-import { spacing, fontSize } from '../styles/theme';
+import { usePatients, useClinicPatients } from '../hooks/usePatients';
+import type { AppStackParamList } from '../interfaces/navigation';
+import { spacing, fontSize, radius } from '../styles/theme';
+
+type Scope = 'clinica' | 'atendidos';
 
 /**
- * Real, read-only patient list — GET /api/animais, scoped server-side to the
- * authenticated veterinarian's own patients (confirmed against the Spring
- * source; see patientService.ts). No create/edit/delete here: the backend
- * itself restricts animal administration to ADMIN_CLINICA/SYSADMIN.
+ * Two legitimate scopes now that Animal isn't veterinarian-owned:
+ * "Da clínica" (GET /api/animais/clinica — the real clinic patient
+ * registry, no prior consultation required) and "Já atendidos"
+ * (GET /api/animais — this veterinarian's own consultation history).
+ * Defaults to "Da clínica" since that's the actual clinic registry; the
+ * segmented toggle keeps the old "já atendidos" view one tap away instead
+ * of dropping it.
  */
 export function PatientsScreen() {
   const colors = useThemeColors();
-  const { data, isPending, isError, error } = usePatients();
+  const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
+  const [scope, setScope] = useState<Scope>('clinica');
   const [search, setSearch] = useState('');
+
+  const clinicQuery = useClinicPatients(undefined, { enabled: scope === 'clinica' });
+  const attendedQuery = usePatients();
+  const { data, isPending, isError, error } = scope === 'clinica' ? clinicQuery : attendedQuery;
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -38,6 +51,25 @@ export function PatientsScreen() {
       <ScreenContainer>
         <Text style={[styles.pageTitle, { color: colors.text }]}>Pacientes</Text>
 
+        <View style={[styles.segmented, { borderColor: colors.border }]}>
+          <Pressable
+            style={[styles.segment, scope === 'clinica' && { backgroundColor: colors.primary }]}
+            onPress={() => setScope('clinica')}
+          >
+            <Text style={{ color: scope === 'clinica' ? '#FFF' : colors.text, fontSize: fontSize.sm }}>
+              Da clínica
+            </Text>
+          </Pressable>
+          <Pressable
+            style={[styles.segment, scope === 'atendidos' && { backgroundColor: colors.primary }]}
+            onPress={() => setScope('atendidos')}
+          >
+            <Text style={{ color: scope === 'atendidos' ? '#FFF' : colors.text, fontSize: fontSize.sm }}>
+              Já atendidos
+            </Text>
+          </Pressable>
+        </View>
+
         <SearchBar value={search} onChangeText={setSearch} placeholder="Buscar paciente..." />
 
         {isPending ? (
@@ -52,11 +84,18 @@ export function PatientsScreen() {
         ) : filtered.length === 0 ? (
           <EmptyState
             title="Nenhum paciente encontrado"
-            message="Pacientes vinculados às suas consultas aparecerão aqui."
+            message={
+              scope === 'clinica'
+                ? 'Nenhum paciente ativo cadastrado nesta clínica.'
+                : 'Pacientes vinculados às suas consultas aparecerão aqui.'
+            }
           />
         ) : (
           filtered.map((animal) => (
-            <AppCard key={animal.id}>
+            <AppCard
+              key={animal.id}
+              onPress={() => navigation.navigate('PacienteDetalhe', { patientId: animal.id })}
+            >
               <Text style={{ color: colors.text, fontWeight: '700' }}>{animal.nome}</Text>
               <Text style={{ color: colors.textSecondary }}>
                 {animal.especieNome}
@@ -77,5 +116,17 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     textAlign: 'center',
     marginBottom: spacing.md,
+  },
+  segmented: {
+    flexDirection: 'row',
+    borderWidth: 1,
+    borderRadius: radius.md,
+    overflow: 'hidden',
+    marginBottom: spacing.md,
+  },
+  segment: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
   },
 });

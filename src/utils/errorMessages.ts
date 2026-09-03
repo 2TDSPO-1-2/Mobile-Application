@@ -87,6 +87,41 @@ export function describePrescricaoError(error: unknown): string {
 }
 
 /**
+ * Translates a patient create/update failure. The 403 case is confirmed to
+ * mean one specific thing for a VETERINARIO caller
+ * (`AnimalService.clinicaVeterinarioAutenticado`): the authenticated vet has
+ * no clinic linked, so the backend can't derive one to attach the patient to.
+ */
+export function describePatientError(error: unknown, isUpdate = false): string {
+  if (error instanceof ApiError) {
+    if (error.status === 400) {
+      return 'Verifique os dados do paciente e tente novamente.';
+    }
+    if (error.status === 403) {
+      return 'Seu cadastro de veterinário não está vinculado a uma clínica.';
+    }
+    if (error.status === 404) {
+      return 'Espécie ou raça informada não foi encontrada.';
+    }
+    if (error.status === 409) {
+      return 'Não foi possível salvar o paciente com esses dados agora.';
+    }
+    if (error.status >= 500) {
+      return isUpdate
+        ? 'Não foi possível salvar as alterações agora. Tente novamente em instantes.'
+        : 'Não foi possível cadastrar o paciente agora. Tente novamente em instantes.';
+    }
+    return isUpdate ? 'Não foi possível salvar as alterações do paciente.' : 'Não foi possível cadastrar o paciente.';
+  }
+  if (isNetworkError(error)) {
+    return isUpdate
+      ? 'Sem conexão com o servidor. As alterações não foram salvas — tente novamente.'
+      : 'Sem conexão com o servidor. O paciente não foi cadastrado — tente novamente.';
+  }
+  return isUpdate ? 'Não foi possível salvar as alterações do paciente.' : 'Não foi possível cadastrar o paciente.';
+}
+
+/**
  * Translates a POST /api/transcricoes failure. Status codes confirmed
  * against `TranscricaoService.java`: 400 (missing/unreadable/unsupported
  * audio), 413 (`AzureSpeechProperties.maxUploadSize`, 10MB default), 422
