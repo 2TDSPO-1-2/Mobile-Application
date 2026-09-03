@@ -1,32 +1,40 @@
 import React from 'react';
 import { View, Pressable, StyleSheet, ViewStyle } from 'react-native';
 import { useThemeColors } from '../hooks/useThemeColors';
-import { spacing, radius } from '../styles/theme';
-import { commonStyles } from '../styles/common';
+import { radius, spacing } from '../styles/theme';
+import { shadows } from '../styles/shadows';
 
 interface Props {
   children: React.ReactNode;
   onPress?: () => void;
   style?: ViewStyle;
+  /**
+   * Left-border accent color — used to distinguish AI-support cards
+   * (primary) from veterinarian-confirmed conclusion cards (success),
+   * without changing the card's neutral surface otherwise.
+   */
+  accentColor?: string;
 }
 
-export function AppCard({ children, onPress, style }: Props) {
+export function AppCard({ children, onPress, style, accentColor }: Props) {
   const colors = useThemeColors();
 
   const cardStyle = [
-    commonStyles.card,
     styles.card,
     {
       backgroundColor: colors.surface,
       borderColor: colors.border,
-      shadowColor: colors.cardShadow,
     },
+    accentColor ? { borderLeftWidth: 4, borderLeftColor: accentColor } : null,
     style,
   ];
 
   if (onPress) {
     return (
-      <Pressable onPress={onPress} style={({ pressed }) => [...cardStyle, pressed && styles.pressed]}>
+      <Pressable
+        onPress={onPress}
+        style={({ pressed }) => [...cardStyle, pressed && { backgroundColor: colors.primaryTint }]}
+      >
         {children}
       </Pressable>
     );
@@ -38,10 +46,9 @@ export function AppCard({ children, onPress, style }: Props) {
 const styles = StyleSheet.create({
   card: {
     borderWidth: 1,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    elevation: 2,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+    ...shadows.sm,
   },
-  pressed: { opacity: 0.85 },
 });

@@ -3,6 +3,7 @@ import { View, Text, Image, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ScreenContainer } from '../components/ScreenContainer';
+import { AppCard } from '../components/AppCard';
 import { AppButton } from '../components/AppButton';
 import { useThemeColors } from '../hooks/useThemeColors';
 import type { AuthStackParamList } from '../interfaces/navigation';
@@ -25,40 +26,30 @@ export function RegisterScreen() {
     <ScreenContainer scroll edges={['top', 'bottom']}>
       <View style={styles.hero}>
         <Image
-          source={require('../assets/arkive_logo.png')}
+          source={require('../assets/branding/definitive.png')}
           style={styles.logo}
-          resizeMode="cover"
+          resizeMode="contain"
         />
-        <Text style={[styles.title, { color: colors.primary }]}>Cadastro</Text>
       </View>
 
-      <Text style={[styles.message, { color: colors.textSecondary }]}>
-        O cadastro de veterinários ainda não está disponível diretamente pelo aplicativo. O
-        acesso ao ArkIve é criado pela administração da clínica. Se você já possui usuário e
-        senha, volte para a tela de login.
-      </Text>
+      <AppCard>
+        <Text style={[styles.title, { color: colors.text }]}>Cadastro</Text>
+        <Text style={[styles.message, { color: colors.textSecondary }]}>
+          O cadastro de veterinários ainda não está disponível diretamente pelo aplicativo. O
+          acesso ao ArkIve é criado pela administração da clínica. Se você já possui usuário e
+          senha, volte para a tela de login.
+        </Text>
 
-      <AppButton title="Voltar para o login" onPress={() => navigation.goBack()} />
+        <AppButton title="Voltar para o login" onPress={() => navigation.goBack()} />
+      </AppCard>
     </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  hero: {
-    alignItems: 'center',
-    marginBottom: spacing.lg,
-  },
-  logo: {
-    width: 104,
-    height: 104,
-    borderRadius: 52,
-    marginBottom: spacing.sm,
-  },
-  title: {
-    fontSize: fontSize.xxl,
-    fontWeight: '800',
-    textAlign: 'center',
-  },
+  hero: { alignItems: 'center', marginBottom: spacing.lg },
+  logo: { width: '70%', height: 72 },
+  title: { fontSize: fontSize.lg, fontWeight: '700', marginBottom: spacing.sm, textAlign: 'center' },
   message: {
     fontSize: fontSize.md,
     textAlign: 'center',

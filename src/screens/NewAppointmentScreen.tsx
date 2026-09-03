@@ -42,18 +42,22 @@ export function NewAppointmentScreen() {
   useEffect(() => {
     if (!user) return;
 
-    getAnimalsByTutor(user.id, user.responsavelId).then((list) => {
-      setAnimals(list);
-      if (!animalId && list.length > 0) setAnimalId(list[0].id);
-    });
+    getAnimalsByTutor(user.id, user.responsavelId)
+      .then((list) => {
+        setAnimals(list);
+        if (!animalId && list.length > 0) setAnimalId(list[0].id);
+      })
+      .catch(() => setError('Não foi possível carregar os animais.'));
 
-    getUsers().then((users) => {
-      const vets = users
-        .filter((u) => u.role === 'veterinario' && u.veterinarioId)
-        .sort((a, b) => a.name.localeCompare(b.name));
+    getUsers()
+      .then((users) => {
+        const vets = users
+          .filter((u) => u.role === 'veterinario' && u.veterinarioId)
+          .sort((a, b) => a.name.localeCompare(b.name));
 
-      setVeterinarians(vets);
-    });
+        setVeterinarians(vets);
+      })
+      .catch(() => setError('Não foi possível carregar os veterinários.'));
   }, [user, animalId]);
 
   const filteredVets = useMemo(() => {

@@ -33,7 +33,8 @@ export function NewEvaluationScreen() {
       setError('Apenas veterinários podem criar avaliações de bem-estar.');
     }
 
-    getAppointmentById(route.params.appointmentId).then(async (appointment) => {
+    (async () => {
+      const appointment = await getAppointmentById(route.params.appointmentId);
       if (!appointment) return;
 
       setAnimalId(appointment.animalId);
@@ -41,7 +42,7 @@ export function NewEvaluationScreen() {
 
       const existing = await getEvaluationByAppointment(appointment.id);
       if (existing) setError('Já existe avaliação de BEA para esta consulta.');
-    });
+    })().catch(() => setError('Não foi possível carregar os dados da consulta.'));
   }, [route.params.appointmentId, role]);
 
   const handleSave = async () => {

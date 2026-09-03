@@ -9,56 +9,111 @@ import {
 import { useThemeColors } from '../hooks/useThemeColors';
 import { spacing, radius, fontSize } from '../styles/theme';
 
+/**
+ * `outline` is kept as an alias for the ArkIve "secondary" treatment
+ * (neutral surface + border) rather than renamed across every screen that
+ * already uses it for "the button that isn't the primary action" (Salvar,
+ * Cancelar, Tentar novamente, Editar, ...). `ghost` is available for
+ * genuinely minimal/tertiary actions where even a border is too much
+ * weight — nothing currently uses it, but it's part of the documented
+ * ArkIve button system.
+ */
+type Variant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
+
 interface Props {
   title: string;
   onPress: () => void;
-  variant?: 'primary' | 'secondary' | 'outline' | 'danger';
+  variant?: Variant;
+  size?: 'default' | 'small';
   disabled?: boolean;
   loading?: boolean;
   style?: ViewStyle;
+  /** Falls back to `title` — pass this when the visible label alone doesn't fully describe the action (e.g. an icon-only or state-changing control). */
+  accessibilityLabel?: string;
 }
 
 export function AppButton({
   title,
   onPress,
   variant = 'primary',
+  size = 'default',
   disabled,
   loading,
   style,
+  accessibilityLabel,
 }: Props) {
   const colors = useThemeColors();
+  const isSecondary = variant === 'secondary' || variant === 'outline';
 
-  const bg =
-    variant === 'primary'
-      ? colors.primary
-      : variant === 'secondary'
-        ? colors.secondary
-        : variant === 'danger'
-          ? colors.error
-          : 'transparent';
+  const appearance: Record<Variant, { bg: string; border?: string; text: string; pressedBg: string; pressedBorder?: string; pressedText?: string }> = {
+    primary: {
+      bg: colors.primary,
+      text: '#FFFFFF',
+      pressedBg: colors.primaryDark,
+    },
+    secondary: {
+      bg: colors.background,
+      border: colors.border,
+      text: colors.text,
+      pressedBg: colors.primaryTint,
+      pressedBorder: colors.primaryLight,
+      pressedText: colors.primary,
+    },
+    outline: {
+      bg: colors.background,
+      border: colors.border,
+      text: colors.text,
+      pressedBg: colors.primaryTint,
+      pressedBorder: colors.primaryLight,
+      pressedText: colors.primary,
+    },
+    ghost: {
+      bg: 'transparent',
+      text: colors.textSecondary,
+      pressedBg: colors.background,
+    },
+    danger: {
+      bg: colors.errorTint,
+      border: colors.error,
+      text: colors.error,
+      pressedBg: colors.errorTint,
+      pressedBorder: colors.errorDark,
+      pressedText: colors.errorDark,
+    },
+  };
 
-  const textColor =
-    variant === 'outline' ? colors.primary : '#FFFFFF';
+  const current = appearance[variant];
 
   return (
     <Pressable
       onPress={onPress}
       disabled={disabled || loading}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel ?? title}
       style={({ pressed }) => [
         styles.btn,
+        size === 'small' && styles.btnSmall,
         {
-          backgroundColor: bg,
-          borderColor: colors.primary,
-          opacity: pressed || disabled ? 0.7 : 1,
+          backgroundColor: pressed ? current.pressedBg : current.bg,
+          borderColor: pressed ? (current.pressedBorder ?? current.border) : current.border,
+          borderWidth: current.border ? 1.5 : 0,
+          opacity: disabled ? 0.56 : 1,
         },
-        variant === 'outline' && styles.outline,
         style,
       ]}
     >
       {loading ? (
-        <ActivityIndicator color={textColor} />
+        <ActivityIndicator color={isSecondary ? colors.primary : current.text} />
       ) : (
-        <Text style={[styles.text, { color: textColor }]}>{title}</Text>
+        <Text
+          style={[
+            styles.text,
+            size === 'small' && styles.textSmall,
+            { color: current.text },
+          ]}
+        >
+          {title}
+        </Text>
       )}
     </Pressable>
   );
@@ -66,12 +121,19 @@ export function AppButton({
 
 const styles = StyleSheet.create({
   btn: {
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
+    minHeight: 44,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
     borderRadius: radius.md,
     alignItems: 'center',
+    justifyContent: 'center',
     marginVertical: spacing.xs,
   },
-  outline: { borderWidth: 2 },
-  text: { fontSize: fontSize.md, fontWeight: '600' },
+  btnSmall: {
+    minHeight: 32,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+  },
+  text: { fontSize: fontSize.md, fontWeight: '700' },
+  textSmall: { fontSize: fontSize.sm },
 });
