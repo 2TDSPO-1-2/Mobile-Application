@@ -1,64 +1,78 @@
 import React from 'react';
 import { View, Text, Pressable, Image, StyleSheet } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useThemeColors } from '../hooks/useThemeColors';
 import { spacing, fontSize, radius } from '../styles/theme';
 import type { AppStackParamList } from '../interfaces/navigation';
 
-function NotificationIcon() {
+function NotificationIcon({ color }: { color: string }) {
   return (
     <View style={styles.notificationIcon}>
-      <View style={styles.notificationDome} />
-      <View style={styles.notificationBody} />
-      <View style={styles.notificationClapper} />
+      <View style={[styles.notificationDome, { backgroundColor: color }]} />
+      <View style={[styles.notificationBody, { backgroundColor: color }]} />
+      <View style={[styles.notificationClapper, { backgroundColor: color }]} />
     </View>
   );
 }
 
-function UserIcon() {
+function UserIcon({ color }: { color: string }) {
   return (
     <View style={styles.userIcon}>
-      <View style={styles.userHead} />
-      <View style={styles.userBody} />
+      <View style={[styles.userHead, { backgroundColor: color }]} />
+      <View style={[styles.userBody, { backgroundColor: color }]} />
     </View>
   );
 }
 
+/** White surface with a thin bottom border, matching AppHeader — one coherent header system app-wide. */
 export function HomeHeader() {
   const colors = useThemeColors();
+  const insets = useSafeAreaInsets();
   const navigation =
     useNavigation<NativeStackNavigationProp<AppStackParamList>>();
 
   return (
-    <View style={[styles.header, { backgroundColor: colors.header }]}>
+    <View
+      style={[
+        styles.header,
+        {
+          paddingTop: insets.top + spacing.sm,
+          backgroundColor: colors.surface,
+          borderBottomColor: colors.border,
+        },
+      ]}
+    >
       <Image
-        source={require('../assets/arkive_icon.png')}
+        source={require('../assets/branding/favicon.png')}
         style={styles.logo}
         resizeMode="contain"
       />
-      <Text style={[styles.brand, { color: colors.headerText }]}>ArkIve</Text>
+      <Text style={[styles.brand, { color: colors.text }]}>ArkIve</Text>
 
       <View style={styles.actions}>
         <Pressable
           onPress={() => navigation.navigate('Notificacoes')}
-          style={[styles.iconBtn, { borderColor: colors.headerText }]}
+          style={[styles.iconBtn, { borderColor: colors.border }]}
+          accessibilityRole="button"
+          accessibilityLabel="Notificações"
         >
-          <NotificationIcon />
+          <NotificationIcon color={colors.primary} />
         </Pressable>
 
         <Pressable
           onPress={() => navigation.navigate('Perfil')}
-          style={[styles.iconBtn, { borderColor: colors.headerText }]}
+          style={[styles.iconBtn, { borderColor: colors.border }]}
+          accessibilityRole="button"
+          accessibilityLabel="Perfil"
         >
-          <UserIcon />
+          <UserIcon color={colors.primary} />
         </Pressable>
       </View>
     </View>
   );
 }
-
-const iconColor = '#EAF5EE';
 
 const styles = StyleSheet.create({
   header: {
@@ -66,13 +80,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.md,
-    borderBottomLeftRadius: radius.lg,
-    borderBottomRightRadius: radius.lg,
+    borderBottomWidth: 1,
   },
   logo: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 30,
+    height: 30,
+    borderRadius: radius.sm,
     marginRight: spacing.sm,
   },
   brand: { flex: 1, fontSize: fontSize.xl, fontWeight: '800' },
@@ -80,7 +93,7 @@ const styles = StyleSheet.create({
   iconBtn: {
     width: 34,
     height: 34,
-    borderRadius: 17,
+    borderRadius: radius.full,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
@@ -91,20 +104,17 @@ const styles = StyleSheet.create({
     height: 6,
     borderTopLeftRadius: 8,
     borderTopRightRadius: 8,
-    backgroundColor: iconColor,
   },
   notificationBody: {
     width: 16,
     height: 9,
     borderBottomLeftRadius: 6,
     borderBottomRightRadius: 6,
-    backgroundColor: iconColor,
   },
   notificationClapper: {
     width: 5,
     height: 5,
     borderRadius: 3,
-    backgroundColor: iconColor,
     marginTop: -1,
   },
   userIcon: { alignItems: 'center', justifyContent: 'center' },
@@ -112,7 +122,6 @@ const styles = StyleSheet.create({
     width: 9,
     height: 9,
     borderRadius: 5,
-    backgroundColor: iconColor,
     marginBottom: 2,
   },
   userBody: {
@@ -120,6 +129,5 @@ const styles = StyleSheet.create({
     height: 9,
     borderTopLeftRadius: 9,
     borderTopRightRadius: 9,
-    backgroundColor: iconColor,
   },
 });

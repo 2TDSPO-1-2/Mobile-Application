@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useThemeColors } from '../hooks/useThemeColors';
-import { spacing, fontSize } from '../styles/theme';
+import { spacing, radius, fontSize } from '../styles/theme';
 
 interface Props {
   title: string;
@@ -12,7 +12,7 @@ export function EmptyState({ title, message }: Props) {
   const colors = useThemeColors();
 
   return (
-    <View style={styles.wrap}>
+    <View style={[styles.wrap, { backgroundColor: colors.surface, borderColor: colors.border }]}>
       <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
       {message ? (
         <Text style={[styles.message, { color: colors.textSecondary }]}>
@@ -25,17 +25,20 @@ export function EmptyState({ title, message }: Props) {
 
 const styles = StyleSheet.create({
   wrap: {
-    padding: spacing.xl,
+    borderWidth: 1,
+    borderRadius: radius.md,
+    padding: spacing.lg,
     alignItems: 'center',
+    marginBottom: spacing.sm,
   },
   title: {
-    fontSize: fontSize.lg,
-    fontWeight: '600',
+    fontSize: fontSize.md,
+    fontWeight: '700',
     textAlign: 'center',
   },
   message: {
-    fontSize: fontSize.md,
+    fontSize: fontSize.sm,
     textAlign: 'center',
-    marginTop: spacing.sm,
+    marginTop: spacing.xs,
   },
 });

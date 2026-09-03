@@ -1,4 +1,20 @@
-import { apiDelete, apiGet, apiPatch, apiPost, apiPut } from './apiClient';
+import { apiDelete, apiGet, apiPatch, apiPost, apiPut, ApiError, NetworkError } from './apiClient';
+
+/**
+ * TEMPORARY diagnostic — sanitized (id, HTTP status, and the backend's own
+ * safe business message; never narrative/diagnosis/AI content or auth).
+ * Remove once the clinical-support 5xx is root-caused.
+ */
+function logAiDiagnostic(label: string, id: number, err: unknown): void {
+  if (!__DEV__) return;
+  if (err instanceof ApiError) {
+    console.log(`[ai] ${label} status=${err.status} message=${err.message}`);
+  } else if (err instanceof NetworkError) {
+    console.log(`[ai] ${label} failed NetworkError consultaId=${id} (fetch rejected before any HTTP response)`);
+  } else if (err instanceof Error) {
+    console.log(`[ai] ${label} failed ${err.name} consultaId=${id}`);
+  }
+}
 
 /** AG Agendada · EP Em Progresso · AP Aguardando Parecer · FI Finalizada · CA Cancelada */
 export type ConsultaStatus = 'AG' | 'EP' | 'AP' | 'FI' | 'CA';
@@ -160,7 +176,15 @@ export async function startConsulta(id: number): Promise<ConsultaWorkflowRespons
  * the external engine.
  */
 export async function getClinicalSupport(id: number): Promise<ClinicalSupportResponse> {
-  return apiGet<ClinicalSupportResponse>(`/api/consultas/${id}/suporte-clinico`);
+  if (__DEV__) console.log(`[ai] recovery GET start consultaId=${id}`);
+  try {
+    const result = await apiGet<ClinicalSupportResponse>(`/api/consultas/${id}/suporte-clinico`);
+    if (__DEV__) console.log(`[ai] recovery GET status=200 consultaId=${id}`);
+    return result;
+  } catch (err) {
+    logAiDiagnostic('recovery GET', id, err);
+    throw err;
+  }
 }
 
 /**
@@ -187,7 +211,15 @@ export async function updateNarrativa(
  * having already awaited a successful updateNarrativa for any new text.
  */
 export async function requestClinicalSupport(id: number): Promise<ClinicalSupportResponse> {
-  return apiPost<ClinicalSupportResponse>(`/api/consultas/${id}/suporte-clinico`);
+  if (__DEV__) console.log(`[ai] support request start consultaId=${id}`);
+  try {
+    const result = await apiPost<ClinicalSupportResponse>(`/api/consultas/${id}/suporte-clinico`);
+    if (__DEV__) console.log(`[ai] support response status=200 consultaId=${id}`);
+    return result;
+  } catch (err) {
+    logAiDiagnostic('support response', id, err);
+    throw err;
+  }
 }
 
 /**

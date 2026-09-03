@@ -1,4 +1,5 @@
 import { ApiError, isNetworkError } from '../services/apiClient';
+import { RecordingFileError } from '../services/transcricaoService';
 
 /** Translates a save-narrative failure into veterinarian-facing language — never the raw HTTP/API detail. */
 export function describeNarrativeSaveError(error: unknown): string {
@@ -83,4 +84,42 @@ export function describePrescricaoError(error: unknown): string {
     return 'Sem conexão com o servidor. A prescrição não foi salva — tente novamente.';
   }
   return 'Não foi possível salvar a prescrição agora.';
+}
+
+/**
+ * Translates a POST /api/transcricoes failure. Status codes confirmed
+ * against `TranscricaoService.java`: 400 (missing/unreadable/unsupported
+ * audio), 413 (`AzureSpeechProperties.maxUploadSize`, 10MB default), 422
+ * (Azure returned no speech), 401 handled globally. 403/429/502/503 are the
+ * product's own mapped language for the remaining documented cases.
+ */
+export function describeTranscriptionError(error: unknown): string {
+  if (error instanceof RecordingFileError) {
+    return 'A gravação não foi encontrada. Grave novamente.';
+  }
+  if (error instanceof ApiError) {
+    if (error.status === 400) {
+      return 'Não foi possível processar este áudio.';
+    }
+    if (error.status === 403) {
+      return 'Seu usuário não possui permissão para usar a transcrição.';
+    }
+    if (error.status === 413) {
+      return 'O áudio é muito grande. Grave uma mensagem mais curta.';
+    }
+    if (error.status === 422) {
+      return 'Nenhuma fala foi reconhecida. Tente novamente.';
+    }
+    if (error.status === 429) {
+      return 'O serviço de transcrição está ocupado. Tente novamente em instantes.';
+    }
+    if (error.status === 502 || error.status === 503 || error.status >= 500) {
+      return 'O serviço de transcrição está temporariamente indisponível.';
+    }
+    return 'Não foi possível transcrever o áudio agora.';
+  }
+  if (isNetworkError(error)) {
+    return 'Não foi possível enviar o áudio. Verifique sua conexão e tente novamente.';
+  }
+  return 'Não foi possível transcrever o áudio agora.';
 }
