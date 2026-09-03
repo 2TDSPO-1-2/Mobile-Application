@@ -4,30 +4,46 @@
     "slug": "arkive",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./src/assets/arkive_icon.png",
+    "icon": "./src/assets/branding/favicon.png",
     "userInterfaceStyle": "automatic",
-    "splash": {
-      "image": "./src/assets/arkive_logo.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#1B5E3B"
-    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.arkive.app"
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./src/assets/arkive_icon.png",
-        "backgroundColor": "#1B5E3B"
+        "foregroundImage": "./src/assets/branding/favicon.png",
+        "backgroundColor": "#F4F5F7"
       },
       "package": "com.arkive.app"
     },
     "web": {
       "bundler": "metro",
-      "favicon": "./src/assets/arkive_icon.png"
+      "favicon": "./src/assets/branding/favicon.png"
     },
     "experiments": {
       "baseUrl": "/Mobile-Application"
-    }
+    },
+    "plugins": [
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "O ArkIve usa o microfone para gravar a narrativa clínica ditada pelo veterinário e enviá-la para transcrição.",
+          "recordAudioAndroid": true
+        }
+      ],
+      "expo-asset",
+      "expo-secure-store",
+      "expo-status-bar",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./src/assets/branding/definitive.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#F4F5F7"
+        }
+      ],
+      "@react-native-community/datetimepicker"
+    ]
   }
 }

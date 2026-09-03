@@ -68,7 +68,7 @@ export function FeedbackScreen() {
       setHistory(await getFeedbacksForUser(currentUser.id));
     }
 
-    load();
+    load().catch(() => setError('Não foi possível carregar os dados de feedback.'));
   }, [user, role, targetUserId, route.params?.appointmentId]);
 
   const targetLabel = useMemo(

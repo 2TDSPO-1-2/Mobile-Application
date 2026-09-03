@@ -1,5 +1,6 @@
 import { StyleSheet } from 'react-native';
 import { spacing, radius, fontSize } from './theme';
+import { shadows } from './shadows';
 
 export const commonStyles = StyleSheet.create({
   screen: {
@@ -19,8 +20,8 @@ export const commonStyles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   title: {
-    fontSize: fontSize.xl,
-    fontWeight: '700',
+    fontSize: fontSize.xxl,
+    fontWeight: '800',
   },
   subtitle: {
     fontSize: fontSize.md,
@@ -28,9 +29,16 @@ export const commonStyles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: fontSize.lg,
-    fontWeight: '600',
+    fontWeight: '700',
     marginBottom: spacing.sm,
     marginTop: spacing.md,
+  },
+  /** Small uppercase section label, e.g. above a card group on Consultation Detail. */
+  eyebrow: {
+    fontSize: fontSize.xs,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.7,
   },
   card: {
     borderRadius: radius.md,
@@ -39,11 +47,16 @@ export const commonStyles = StyleSheet.create({
   },
   label: {
     fontSize: fontSize.sm,
-    fontWeight: '500',
+    fontWeight: '600',
     marginBottom: spacing.xs,
   },
-  errorText: {
+  helperText: {
     fontSize: fontSize.sm,
+    marginTop: spacing.xs,
+  },
+  errorText: {
+    fontSize: fontSize.xs,
+    fontWeight: '600',
     marginTop: spacing.xs,
   },
   fab: {
@@ -55,9 +68,6 @@ export const commonStyles = StyleSheet.create({
     borderRadius: radius.full,
     alignItems: 'center',
     justifyContent: 'center',
-    elevation: 4,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
+    ...shadows.md,
   },
 });

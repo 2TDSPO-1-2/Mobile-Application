@@ -1,3 +1,4 @@
+import { fetch as expoFetch } from 'expo/fetch';
 import { API_BASE_URL } from '../config/api';
 import { encodeBase64 } from '../utils/base64';
 import { getCredentials, type StoredCredentials } from '../storage/credentialStore';
@@ -42,8 +43,15 @@ async function apiRequest<T>(path: string, options: ApiRequestOptions = {}): Pro
   const { body, authOverride, headers: extraHeaders, ...rest } = options;
   const url = `${API_BASE_URL}${path}`;
 
+  // A FormData body (multipart uploads — see transcricaoService.ts) must
+  // never be JSON.stringify'd, and must never get an explicit Content-Type:
+  // fetch has to compute its own `multipart/form-data; boundary=...` from
+  // the FormData instance itself. Setting one manually here would produce a
+  // header with no boundary and a body Spring can't parse.
+  const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
+
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+    ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
     ...(extraHeaders as Record<string, string> | undefined),
   };
 
@@ -54,10 +62,21 @@ async function apiRequest<T>(path: string, options: ApiRequestOptions = {}): Pro
 
   let response: Response;
   try {
-    response = await fetch(url, {
+    // Explicit `expo/fetch` (not the ambient global) — this is the
+    // WinterCG-compliant implementation whose FormData/Blob handling
+    // `expo-file-system`'s `File` is actually designed against. Confirmed via
+    // `expo/build/winter/fetch/convertFormData.ts`: it does not understand
+    // React Native's classic `{uri, name, type}` pseudo-blob at all
+    // ("`uri` is not supported for React Native's FormData"), and it has an
+    // explicit `'bytes' in entry` branch specifically for File-like values
+    // that "don't extend Blob but implement the interface" — i.e. exactly
+    // `expo-file-system`'s `File`. Using RN's own global fetch with a real
+    // `File` appended (or the old pseudo-object with this fetch) both hit
+    // unsupported branches there and throw before any request is sent.
+    response = await expoFetch(url, {
       ...rest,
       headers,
-      body: body !== undefined ? JSON.stringify(body) : undefined,
+      body: isFormData ? (body as FormData) : body !== undefined ? JSON.stringify(body) : undefined,
     });
   } catch {
     throw new NetworkError();

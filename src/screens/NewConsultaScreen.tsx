@@ -6,6 +6,8 @@ import { AppHeader } from '../components/AppHeader';
 import { ScreenContainer } from '../components/ScreenContainer';
 import { AppInput } from '../components/AppInput';
 import { AppButton } from '../components/AppButton';
+import { DateField } from '../components/DateField';
+import { TimeField } from '../components/TimeField';
 import { EmptyState } from '../components/EmptyState';
 import { useThemeColors } from '../hooks/useThemeColors';
 import { usePatients } from '../hooks/usePatients';
@@ -16,11 +18,18 @@ import { spacing, fontSize, radius } from '../styles/theme';
 
 const MODALIDADES: Modalidade[] = ['PRESENCIAL', 'REMOTA'];
 
-function toIsoDate(value: string): string {
-  const trimmed = value.trim();
-  const match = trimmed.match(/^(\d{2})-(\d{2})-(\d{4})$/);
-  if (match) return `${match[3]}-${match[2]}-${match[1]}`;
-  return trimmed;
+/**
+ * Builds the exact `LocalDateTime` string Spring expects — local wall-clock
+ * time, zero-padded, no timezone/UTC conversion (`ConsultaRequest.dataHora`
+ * is a `LocalDateTime`, not an `Instant`/`OffsetDateTime`).
+ */
+function toLocalDateTimeString(date: Date, time: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  const hh = String(time.getHours()).padStart(2, '0');
+  const mm = String(time.getMinutes()).padStart(2, '0');
+  return `${y}-${m}-${d}T${hh}:${mm}:00`;
 }
 
 export function NewConsultaScreen() {
@@ -40,8 +49,8 @@ export function NewConsultaScreen() {
 
   const [animalId, setAnimalId] = useState<number | null>(null);
   const [modalidade, setModalidade] = useState<Modalidade | null>(null);
-  const [date, setDate] = useState('');
-  const [time, setTime] = useState('');
+  const [date, setDate] = useState<Date | null>(null);
+  const [time, setTime] = useState<Date | null>(null);
   const [motivo, setMotivo] = useState('');
   const [error, setError] = useState('');
 
@@ -62,8 +71,12 @@ export function NewConsultaScreen() {
       setError('Selecione a modalidade da consulta.');
       return;
     }
-    if (!date.trim() || !time.trim()) {
-      setError('Informe data e horário da consulta.');
+    if (!date) {
+      setError('Selecione uma data para a consulta.');
+      return;
+    }
+    if (!time) {
+      setError('Selecione um horário para a consulta.');
       return;
     }
     if (!motivo.trim()) {
@@ -76,7 +89,7 @@ export function NewConsultaScreen() {
         animalId,
         veterinarioId,
         modalidade,
-        dataHora: `${toIsoDate(date)}T${time.trim()}:00`,
+        dataHora: toLocalDateTimeString(date, time),
         motivo: motivo.trim(),
       });
 
@@ -169,8 +182,8 @@ export function NewConsultaScreen() {
               ))}
             </View>
 
-            <AppInput label="Data" placeholder="DD-MM-AAAA" value={date} onChangeText={setDate} />
-            <AppInput label="Horário" placeholder="HH:MM" value={time} onChangeText={setTime} />
+            <DateField label="Data" value={date} onChange={setDate} />
+            <TimeField label="Horário" value={time} onChange={setTime} />
             <AppInput
               label="Motivo"
               placeholder="Descreva o motivo da consulta"

@@ -1,22 +1,20 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { HomeHeader } from '../components/HomeHeader';
 import { ScreenContainer } from '../components/ScreenContainer';
 import { SearchBar } from '../components/SearchBar';
 import { AppCard } from '../components/AppCard';
 import { AppButton } from '../components/AppButton';
-import { EmptyState } from '../components/EmptyState';
+import { StatusBadge } from '../components/StatusBadge';
 import { useAuth } from '../hooks/useAuth';
 import { useThemeColors } from '../hooks/useThemeColors';
+import { useConsultas } from '../hooks/useConsultas';
+import { consultaStatusPresentation } from '../utils/statusPresentation';
 import type { AppStackParamList } from '../interfaces/navigation';
-import { getAppointments, sortAppointments } from '../services/appointmentService';
-import { getAnimalById } from '../services/animalService';
-import { getUsers } from '../services/userService';
-import type { Appointment } from '../types';
-import { isToday } from '../utils/date';
 import { spacing, fontSize } from '../styles/theme';
+import { commonStyles } from '../styles/common';
 
 function getDisplayFirstName(name?: string): string {
   if (!name) return '';
@@ -26,10 +24,20 @@ function getDisplayFirstName(name?: string): string {
   return parts[0] ?? '';
 }
 
-interface TodayItem {
-  appointment: Appointment;
-  animalName: string;
-  veterinarianName: string;
+function isSameDayAsNow(iso: string): boolean {
+  const date = new Date(iso);
+  const now = new Date();
+  return (
+    date.getFullYear() === now.getFullYear() &&
+    date.getMonth() === now.getMonth() &&
+    date.getDate() === now.getDate()
+  );
+}
+
+function formatHora(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 }
 
 export function HomeScreen() {
@@ -39,63 +47,24 @@ export function HomeScreen() {
     useNavigation<NativeStackNavigationProp<AppStackParamList>>();
 
   const [search, setSearch] = useState('');
-  const [todayItems, setTodayItems] = useState<TodayItem[]>([]);
 
-  const load = useCallback(async () => {
-    if (!user) return;
+  // GET /api/consultas — same TanStack Query cache ConsultasScreen already
+  // populates, scoped server-side to the authenticated veterinarian. This
+  // replaced a Node-era `/appointments` widget whose endpoint no longer
+  // exists on the Spring backend and crashed every visit to this screen with
+  // an unhandled promise rejection.
+  const { data: consultas, isPending, isError } = useConsultas();
 
-    const filters =
-      role === 'tutor'
-        ? { responsavelId: user.responsavelId }
-        : { veterinarianId: user.veterinarioId };
-
-    const appointments = sortAppointments(await getAppointments(filters));
-    const users = await getUsers();
-
-    const todayAppointments = appointments.filter(
-      (appointment) =>
-        isToday(appointment.date) &&
-        appointment.status !== 'cancelada' &&
-        appointment.status !== 'realizada'
-    );
-
-    const enriched: TodayItem[] = [];
-
-    for (const appointment of todayAppointments) {
-      const animal = await getAnimalById(appointment.animalId);
-      const vet = users.find(
-        (item) =>
-          item.role === 'veterinario' &&
-          String(item.veterinarioId) === String(appointment.veterinarianId)
-      );
-
-      enriched.push({
-        appointment,
-        animalName: animal?.name ?? 'Animal',
-        veterinarianName: vet?.name ?? 'Veterinário',
-      });
-    }
-
-    setTodayItems(enriched);
-  }, [user, role]);
-
-  useFocusEffect(
-    useCallback(() => {
-      load();
-    }, [load])
-  );
+  const todayConsultas = useMemo(() => {
+    if (!consultas) return [];
+    return consultas
+      .filter((c) => c.status !== 'CA' && isSameDayAsNow(c.dataHora))
+      .sort((a, b) => a.dataHora.localeCompare(b.dataHora));
+  }, [consultas]);
 
   const firstName = getDisplayFirstName(user?.name);
   const greeting =
     role === 'veterinario' ? `Olá, Dr. ${firstName}!` : `Olá, ${firstName}!`;
-
-  const orderedToday = useMemo(
-    () =>
-      [...todayItems].sort((a, b) =>
-        a.appointment.time.localeCompare(b.appointment.time)
-      ),
-    [todayItems]
-  );
 
   const handleSearch = () => {
     const term = search.trim();
@@ -106,7 +75,7 @@ export function HomeScreen() {
     <View style={[styles.root, { backgroundColor: colors.background }]}>
       <HomeHeader />
 
-      <ScreenContainer scroll={false} style={styles.content}>
+      <ScreenContainer style={styles.content}>
         <SearchBar
           value={search}
           onChangeText={setSearch}
@@ -117,43 +86,57 @@ export function HomeScreen() {
         <Text style={[styles.greeting, { color: colors.text }]}>{greeting}</Text>
 
         <Text style={[styles.description, { color: colors.textSecondary }]}>
-          Acompanhe seus compromissos veterinários e registros do ArkIve.
+          Acompanhe suas consultas veterinárias e registros do ArkIve.
+        </Text>
+
+        <Text style={[commonStyles.eyebrow, { color: colors.primary, marginBottom: spacing.sm }]}>
+          Consultas de hoje
         </Text>
 
         <AppCard>
-          <Text style={[styles.section, { color: colors.text }]}>
-            Consultas marcadas para hoje: {orderedToday.length}
-          </Text>
-
-          {orderedToday.length === 0 ? (
+          {isPending ? (
+            <Text style={{ color: colors.textSecondary }}>Carregando consultas...</Text>
+          ) : isError ? (
+            <Text style={{ color: colors.error }}>Não foi possível carregar suas consultas.</Text>
+          ) : todayConsultas.length === 0 ? (
             <Text style={{ color: colors.textSecondary }}>
               Sem consultas marcadas para hoje.
             </Text>
           ) : (
-            orderedToday.map(({ appointment, animalName, veterinarianName }) => (
-              <View key={appointment.id} style={[styles.todayCard, { borderColor: colors.border }]}>
-                <Text style={[styles.todayTitle, { color: colors.text }]}>
-                  {animalName}
-                </Text>
-                <Text style={{ color: colors.textSecondary }}>
-                  {veterinarianName} · {appointment.time}
-                </Text>
-                {appointment.notes ? (
-                  <Text style={{ color: colors.textSecondary }}>
-                    {appointment.notes}
+            todayConsultas.map((consulta, index) => (
+              <View
+                key={consulta.id}
+                style={[
+                  styles.todayCard,
+                  index === 0 && styles.todayCardFirst,
+                  { borderColor: colors.border },
+                ]}
+              >
+                <View style={commonStyles.rowBetween}>
+                  <Text style={[styles.todayTitle, { color: colors.text }]}>
+                    {consulta.animalNome}
                   </Text>
-                ) : null}
+                  <StatusBadge
+                    label={consulta.statusDescricao}
+                    tone={consultaStatusPresentation(consulta.status).tone}
+                  />
+                </View>
+                <Text style={{ color: colors.textSecondary }}>
+                  {consulta.veterinarioNome} · {formatHora(consulta.dataHora)}
+                </Text>
               </View>
             ))
           )}
         </AppCard>
 
-        <Text style={[styles.section, { color: colors.text }]}>Acesso rápido</Text>
+        <Text style={[commonStyles.eyebrow, { color: colors.primary, marginBottom: spacing.sm, marginTop: spacing.md }]}>
+          Acesso rápido
+        </Text>
 
         <AppButton
-          title="Marcar consulta"
+          title="Nova consulta"
           variant="outline"
-          onPress={() => navigation.navigate('NovaConsulta', {})}
+          onPress={() => navigation.navigate('CriarConsulta')}
         />
 
         <AppButton
@@ -174,7 +157,7 @@ export function HomeScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  content: { flex: 1, padding: spacing.md },
+  content: { padding: spacing.md },
   greeting: {
     fontSize: fontSize.xl,
     fontWeight: '700',
@@ -185,15 +168,15 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     lineHeight: 20,
   },
-  section: {
-    fontSize: fontSize.lg,
-    fontWeight: '700',
-    marginBottom: spacing.sm,
-  },
   todayCard: {
     borderTopWidth: 1,
     paddingTop: spacing.sm,
     marginTop: spacing.sm,
+  },
+  todayCardFirst: {
+    borderTopWidth: 0,
+    paddingTop: 0,
+    marginTop: 0,
   },
   todayTitle: {
     fontSize: fontSize.md,

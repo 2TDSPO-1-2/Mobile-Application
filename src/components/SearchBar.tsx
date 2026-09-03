@@ -43,7 +43,7 @@ export function SearchBar({
           styles.input,
           {
             backgroundColor: colors.surface,
-            borderColor: colors.border,
+            borderColor: colors.inputBorder,
             color: colors.text,
           },
         ]}
@@ -57,10 +57,10 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   input: {
-    borderWidth: 1,
-    borderRadius: radius.full,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm + 2,
+    minHeight: 44,
+    borderWidth: 1.5,
+    borderRadius: radius.sm,
+    paddingHorizontal: spacing.md,
     fontSize: fontSize.md,
   },
 });

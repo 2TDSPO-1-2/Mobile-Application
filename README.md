@@ -492,6 +492,38 @@ npm start
 
 ---
 
+## Ditado por Voz na Narrativa Clínica
+
+A narrativa clínica (consulta em `EP`) aceita ditado por voz além do teclado. A transcrição em si
+**não roda no celular** — o app apenas grava um áudio local (`expo-audio`, formato `.m4a`/AAC) e
+envia esse arquivo para a API Spring Boot:
+
+```txt
+Microfone → gravação local (.m4a) → POST /api/transcricoes → Spring/Azure Speech → texto
+```
+
+O backend (`TranscricaoController`) recebe o áudio, converte com FFmpeg quando necessário e chama
+o Azure Speech, retornando apenas `{ transcricao, idioma }`. Nenhuma chave da Azure existe no
+aplicativo mobile.
+
+Diferente da tentativa anterior (reconhecimento de voz nativo via `expo-speech-recognition`, já
+removida deste branch), **gravação de áudio com `expo-audio` funciona no Expo Go** — não é
+necessário development build para testar o ditado. Basta:
+
+```bash
+npm start
+```
+
+e abrir no Expo Go normalmente. O microfone pede permissão na primeira gravação; se negada, o
+teclado continua funcionando normalmente — voz é sempre um complemento, nunca um requisito.
+
+O backend publicado no Render precisa ter configurado `arkive.azure.speech.endpoint` e
+`arkive.azure.speech.api-key` (variáveis de ambiente `AZURE_SPEECH_ENDPOINT`/`AZURE_SPEECH_API_KEY`
+no serviço), além da imagem Docker com FFmpeg — isso é responsabilidade do backend, não deste
+repositório.
+
+---
+
 ## Como Acessar o App Publicado
 
 O app está publicado no GitHub Pages:
