@@ -61,24 +61,29 @@ export function TimeField({ label, value, onChange, error }: Props) {
 
       {Platform.OS === 'ios' ? (
         <Modal visible={iosOpen} transparent animationType="slide" onRequestClose={() => setIosOpen(false)}>
-          <Pressable style={styles.backdrop} onPress={() => setIosOpen(false)} />
-          <View style={[styles.sheet, { backgroundColor: colors.surface }]}>
-            <View style={[styles.sheetHeader, { borderBottomColor: colors.border }]}>
-              <Pressable onPress={() => setIosOpen(false)}>
-                <Text style={{ color: colors.textSecondary, fontSize: fontSize.sm }}>Cancelar</Text>
-              </Pressable>
-              <Pressable onPress={confirm}>
-                <Text style={{ color: colors.primary, fontWeight: '700', fontSize: fontSize.sm }}>Concluído</Text>
-              </Pressable>
+          <View style={styles.modalRoot}>
+            <Pressable style={StyleSheet.absoluteFill} onPress={() => setIosOpen(false)} />
+            <View style={[styles.sheet, { backgroundColor: colors.surface }]}>
+              <View style={[styles.sheetHeader, { borderBottomColor: colors.border }]}>
+                <Pressable onPress={() => setIosOpen(false)}>
+                  <Text style={{ color: colors.textSecondary, fontSize: fontSize.sm }}>Cancelar</Text>
+                </Pressable>
+                <Pressable onPress={confirm}>
+                  <Text style={{ color: colors.primary, fontWeight: '700', fontSize: fontSize.sm }}>Concluído</Text>
+                </Pressable>
+              </View>
+              <DateTimePicker
+                value={draft}
+                mode="time"
+                is24Hour
+                display="spinner"
+                locale="pt-BR"
+                themeVariant="light"
+                textColor="#1F2937"
+                style={styles.picker}
+                onValueChange={(_event, selected) => setDraft(selected)}
+              />
             </View>
-            <DateTimePicker
-              value={draft}
-              mode="time"
-              is24Hour
-              display="spinner"
-              locale="pt-BR"
-              onValueChange={(_event, selected) => setDraft(selected)}
-            />
           </View>
         </Modal>
       ) : null}
@@ -97,8 +102,11 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     paddingHorizontal: spacing.md,
   },
-  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)' },
+  // See DateField.native.tsx — the backdrop must be position:'absolute',
+  // never flex:1, or the sheet gets zero layout height.
+  modalRoot: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.35)' },
   sheet: { borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg },
+  picker: { width: '100%', height: 216 },
   sheetHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',

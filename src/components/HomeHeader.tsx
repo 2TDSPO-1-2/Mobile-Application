@@ -87,6 +87,10 @@ const styles = StyleSheet.create({
     height: 30,
     borderRadius: radius.sm,
     marginRight: spacing.sm,
+    // favicon.png is a near-white mark — without this it's essentially
+    // invisible against the white header surface. Force pure black, same
+    // as the Login screen's logo (the asset has a real alpha channel).
+    tintColor: '#000000',
   },
   brand: { flex: 1, fontSize: fontSize.xl, fontWeight: '800' },
   actions: { flexDirection: 'row', gap: spacing.xs },

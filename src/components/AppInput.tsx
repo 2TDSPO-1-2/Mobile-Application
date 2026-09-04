@@ -8,9 +8,11 @@ interface Props extends TextInputProps {
   label: string;
   error?: string;
   helperText?: string;
+  /** Overrides the label's theme-derived color — e.g. LoginScreen forcing pure black regardless of the user's dark-mode preference. */
+  labelColor?: string;
 }
 
-export function AppInput({ label, error, helperText, style, onFocus, onBlur, editable, ...props }: Props) {
+export function AppInput({ label, error, helperText, labelColor, style, onFocus, onBlur, editable, ...props }: Props) {
   const colors = useThemeColors();
   const [focused, setFocused] = useState(false);
 
@@ -30,7 +32,7 @@ export function AppInput({ label, error, helperText, style, onFocus, onBlur, edi
 
   return (
     <View style={[styles.wrap, editable === false && styles.disabled]}>
-      <Text style={[commonStyles.label, { color: colors.text }]}>{label}</Text>
+      <Text style={[commonStyles.label, { color: labelColor ?? colors.text }]}>{label}</Text>
       <TextInput
         placeholderTextColor={colors.textSecondary}
         onFocus={handleFocus}

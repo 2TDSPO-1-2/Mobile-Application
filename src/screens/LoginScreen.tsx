@@ -9,21 +9,31 @@ import {
   Text,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation } from '@react-navigation/native';
 import { AppInput } from '../components/AppInput';
 import { AppButton } from '../components/AppButton';
 import { useAuth } from '../hooks/useAuth';
-import { useThemeColors } from '../hooks/useThemeColors';
+import { lightColors } from '../styles/colors';
 import type { AuthStackParamList } from '../interfaces/navigation';
 import { spacing, fontSize, radius } from '../styles/theme';
 import { shadows } from '../styles/shadows';
 
+/**
+ * Login is a pre-authentication branding moment — it must look identical
+ * regardless of the user's in-app dark-mode preference (a persisted toggle
+ * in Settings, not the OS setting), so this screen deliberately uses the
+ * fixed `lightColors` palette instead of `useThemeColors()`. Labels, input
+ * text, and the logo are additionally forced to literal pure black rather
+ * than the palette's `#1F2937`, and the status bar is pinned to dark icons,
+ * since dark mode was otherwise turning all three light-colored here.
+ */
 export function LoginScreen() {
   const navigation =
     useNavigation<NativeStackNavigationProp<AuthStackParamList>>();
   const { login } = useAuth();
-  const colors = useThemeColors();
+  const colors = lightColors;
 
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
@@ -49,6 +59,7 @@ export function LoginScreen() {
 
   return (
     <SafeAreaView style={[styles.root, { backgroundColor: colors.background }]}>
+      <StatusBar style="dark" />
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -73,6 +84,8 @@ export function LoginScreen() {
 
             <AppInput
               label="Login"
+              labelColor="#000000"
+              style={styles.inputText}
               placeholder="CRMV ou login do veterinário"
               value={identifier}
               onChangeText={setIdentifier}
@@ -82,6 +95,8 @@ export function LoginScreen() {
 
             <AppInput
               label="Senha"
+              labelColor="#000000"
+              style={styles.inputText}
               placeholder="Digite sua senha"
               value={password}
               onChangeText={setPassword}
@@ -131,6 +146,7 @@ const styles = StyleSheet.create({
   logoTint: {
     tintColor: '#000000',
   },
+  inputText: { color: '#000000' },
   error: { fontSize: fontSize.sm, textAlign: 'center', marginBottom: spacing.sm },
   registerLink: { marginTop: spacing.sm },
 });

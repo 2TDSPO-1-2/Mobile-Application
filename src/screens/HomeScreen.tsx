@@ -8,21 +8,12 @@ import { SearchBar } from '../components/SearchBar';
 import { AppCard } from '../components/AppCard';
 import { AppButton } from '../components/AppButton';
 import { StatusBadge } from '../components/StatusBadge';
-import { useAuth } from '../hooks/useAuth';
 import { useThemeColors } from '../hooks/useThemeColors';
 import { useConsultas } from '../hooks/useConsultas';
 import { consultaStatusPresentation } from '../utils/statusPresentation';
 import type { AppStackParamList } from '../interfaces/navigation';
 import { spacing, fontSize } from '../styles/theme';
 import { commonStyles } from '../styles/common';
-
-function getDisplayFirstName(name?: string): string {
-  if (!name) return '';
-  const parts = name.trim().split(/\s+/);
-  const first = parts[0]?.replace(/\./g, '').toLowerCase();
-  if (first === 'dr' || first === 'dra') return parts[1] ?? '';
-  return parts[0] ?? '';
-}
 
 function isSameDayAsNow(iso: string): boolean {
   const date = new Date(iso);
@@ -41,7 +32,6 @@ function formatHora(iso: string): string {
 }
 
 export function HomeScreen() {
-  const { user, role } = useAuth();
   const colors = useThemeColors();
   const navigation =
     useNavigation<NativeStackNavigationProp<AppStackParamList>>();
@@ -62,9 +52,17 @@ export function HomeScreen() {
       .sort((a, b) => a.dataHora.localeCompare(b.dataHora));
   }, [consultas]);
 
-  const firstName = getDisplayFirstName(user?.name);
-  const greeting =
-    role === 'veterinario' ? `Olá, Dr. ${firstName}!` : `Olá, ${firstName}!`;
+  // `veterinarioNome` comes straight from ConsultaDto (GET /api/consultas,
+  // already fetched above for "Consultas de hoje") — the real Spring-sourced
+  // display name, confirmed against `ConsultaResponse.veterinarioNome` /
+  // `Veterinario.getNome()`. This deliberately replaces the old
+  // `useAuth().user.name` source: that field is a documented compatibility
+  // shim that just mirrors the login username/email, which is why the
+  // greeting was showing an email instead of a name. Falls back to a
+  // name-free greeting (never the email) when this account has no
+  // consultation yet to read a name from.
+  const veterinarioNome = consultas && consultas.length > 0 ? consultas[0].veterinarioNome : null;
+  const greeting = veterinarioNome ? `Olá, Dr. ${veterinarioNome}!` : 'Olá, Doutor(a)!';
 
   const handleSearch = () => {
     const term = search.trim();

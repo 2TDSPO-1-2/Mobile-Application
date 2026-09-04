@@ -77,23 +77,28 @@ export function DateField({ label, value, onChange, error }: Props) {
 
       {Platform.OS === 'ios' ? (
         <Modal visible={iosOpen} transparent animationType="slide" onRequestClose={() => setIosOpen(false)}>
-          <Pressable style={styles.backdrop} onPress={() => setIosOpen(false)} />
-          <View style={[styles.sheet, { backgroundColor: colors.surface }]}>
-            <View style={[styles.sheetHeader, { borderBottomColor: colors.border }]}>
-              <Pressable onPress={() => setIosOpen(false)}>
-                <Text style={{ color: colors.textSecondary, fontSize: fontSize.sm }}>Cancelar</Text>
-              </Pressable>
-              <Pressable onPress={confirm}>
-                <Text style={{ color: colors.primary, fontWeight: '700', fontSize: fontSize.sm }}>Concluído</Text>
-              </Pressable>
+          <View style={styles.modalRoot}>
+            <Pressable style={StyleSheet.absoluteFill} onPress={() => setIosOpen(false)} />
+            <View style={[styles.sheet, { backgroundColor: colors.surface }]}>
+              <View style={[styles.sheetHeader, { borderBottomColor: colors.border }]}>
+                <Pressable onPress={() => setIosOpen(false)}>
+                  <Text style={{ color: colors.textSecondary, fontSize: fontSize.sm }}>Cancelar</Text>
+                </Pressable>
+                <Pressable onPress={confirm}>
+                  <Text style={{ color: colors.primary, fontWeight: '700', fontSize: fontSize.sm }}>Concluído</Text>
+                </Pressable>
+              </View>
+              <DateTimePicker
+                value={draft}
+                mode="date"
+                display="spinner"
+                locale="pt-BR"
+                themeVariant="light"
+                textColor="#1F2937"
+                style={styles.picker}
+                onValueChange={(_event, selected) => setDraft(selected)}
+              />
             </View>
-            <DateTimePicker
-              value={draft}
-              mode="date"
-              display="spinner"
-              locale="pt-BR"
-              onValueChange={(_event, selected) => setDraft(selected)}
-            />
           </View>
         </Modal>
       ) : null}
@@ -112,8 +117,16 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     paddingHorizontal: spacing.md,
   },
-  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)' },
+  // The backdrop MUST be position:'absolute' (removed from flex flow), not
+  // flex:1 — a flex:1 sibling in Modal's column layout consumes all
+  // available height before `sheet` gets any, so the picker rendered at
+  // zero height and never showed a single wheel/number.
+  modalRoot: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.35)' },
   sheet: { borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg },
+  // `themeVariant`/`textColor` alone don't help if the picker has no room —
+  // explicit height matches iOS's own intrinsic spinner height instead of
+  // relying on it to self-report a size inside a Modal-nested sheet.
+  picker: { width: '100%', height: 216 },
   sheetHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
