@@ -21,9 +21,6 @@
       "bundler": "metro",
       "favicon": "./src/assets/branding/definitive.png"
     },
-    "experiments": {
-      "baseUrl": "/Mobile-Application"
-    },
     "plugins": [
       [
         "expo-audio",
