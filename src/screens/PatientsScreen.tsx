@@ -9,7 +9,7 @@ import { AppCard } from '../components/AppCard';
 import { EmptyState } from '../components/EmptyState';
 import { useThemeColors } from '../hooks/useThemeColors';
 import { useTranslation } from '../i18n/useTranslation';
-import { usePatients, useClinicPatients } from '../hooks/usePatients';
+import { usePatients, useMyPatients } from '../hooks/usePatients';
 import type { AppStackParamList } from '../interfaces/navigation';
 import { spacing, fontSize, radius } from '../styles/theme';
 
@@ -31,7 +31,7 @@ export function PatientsScreen() {
   const [scope, setScope] = useState<Scope>('clinica');
   const [search, setSearch] = useState('');
 
-  const clinicQuery = useClinicPatients(undefined, { enabled: scope === 'clinica' });
+  const clinicQuery = useMyPatients(undefined, { enabled: scope === 'clinica' });
   const attendedQuery = usePatients();
   const { data, isPending, isError, error } = scope === 'clinica' ? clinicQuery : attendedQuery;
 

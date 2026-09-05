@@ -29,6 +29,12 @@ import { shadows } from '../styles/shadows';
  * text, and the logo are additionally forced to literal pure black rather
  * than the palette's `#1F2937`, and the status bar is pinned to dark icons,
  * since dark mode was otherwise turning all three light-colored here.
+ *
+ * `AppInput` also gets `colors={lightColors}` explicitly — `AppInput` reads
+ * the app's live theme internally for its own background/border/placeholder
+ * color, so without this override those still rendered dark-mode-colored
+ * (a dark input box inside this otherwise-forced-light card) even though
+ * every other element on this screen was already forced light.
  */
 export function LoginScreen() {
   const navigation =
@@ -93,6 +99,7 @@ export function LoginScreen() {
             <AppInput
               label={t('auth.loginLabel')}
               labelColor="#000000"
+              colors={lightColors}
               style={styles.inputText}
               placeholder={t('auth.loginPlaceholder')}
               value={identifier}
@@ -104,6 +111,7 @@ export function LoginScreen() {
             <AppInput
               label={t('auth.passwordLabel')}
               labelColor="#000000"
+              colors={lightColors}
               style={styles.inputText}
               placeholder={t('auth.passwordPlaceholder')}
               value={password}

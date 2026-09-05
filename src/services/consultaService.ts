@@ -64,19 +64,16 @@ export interface ConsultaWorkflowResponse extends ConsultaDto {
 }
 
 /**
- * `ConsultaRequest.java`, confirmed by the Postman collection's own example
- * body: `{ dataHora, modalidade, motivo, animalId, veterinarioId }`. Used
- * as-is for both create and update — Spring reuses the same record for
- * `POST /api/consultas` and `PUT /api/consultas/{id}`.
+ * `ConsultaRequest.java`. Used as-is for both create and update — Spring
+ * reuses the same record for `POST /api/consultas` and `PUT /api/consultas/{id}`.
  *
- * `veterinarioId` IS required in the body (unlike this app's Phase 2
- * assumption) — but `ConsultaService.criar` rejects it with 409 unless it
- * equals the authenticated principal's own veterinarioId, so it can't be
- * spoofed to create a consultation for someone else. There is currently no
- * endpoint that lets the mobile client discover its own veterinarioId
- * directly (no `/me`/`/whoami` anywhere in the backend) — see
- * `NewConsultaScreen.tsx` for how this app works around that gap, and the
- * Phase 2.5 report for why a backend identity endpoint is the real fix.
+ * `veterinarioId` is confirmed nullable in the backend record now
+ * (`@NotNull` was removed) — Java's `AuthController`/`ConsultaService` derive
+ * the veterinarian from the authenticated principal for a VETERINARIO
+ * caller, so this app never sends it. It's kept here only as an optional
+ * field for backward compatibility with the type shape, never populated by
+ * any current caller — `GET /api/auth/me` exists for UI/session identity,
+ * not so the client can echo an id back into a create/update payload.
  *
  * `status` is deliberately not a field here: the backend forces new
  * consultations to `AG` and rejects any PUT that changes status to
@@ -92,7 +89,7 @@ export interface ConsultaRequestInput {
   peso?: number;
   transcricao?: string;
   animalId: number;
-  veterinarioId: number;
+  veterinarioId?: number;
 }
 
 export type CreateConsultaInput = ConsultaRequestInput;

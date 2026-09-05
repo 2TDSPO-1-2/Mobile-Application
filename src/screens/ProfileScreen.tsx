@@ -24,7 +24,7 @@ import { spacing, fontSize } from '../styles/theme';
  */
 export function ProfileScreen() {
   const { logout } = useAuth();
-  const { data: veterinario, isPending, isError, veterinarioId } = useOwnVeterinario();
+  const { data: veterinario, isPending, isError } = useOwnVeterinario();
   const colors = useThemeColors();
   const { t } = useTranslation();
   const navigation =
@@ -40,10 +40,7 @@ export function ProfileScreen() {
             {t('profile.loading')}
           </Text>
         ) : isError || !veterinario ? (
-          <EmptyState
-            title={t('profile.loadErrorTitle')}
-            message={veterinarioId == null ? t('profile.loadErrorNoConsultas') : t('profile.loadErrorGeneric')}
-          />
+          <EmptyState title={t('profile.loadErrorTitle')} message={t('profile.loadErrorGeneric')} />
         ) : (
           <AppCard style={styles.profileCard}>
             <Text style={[styles.name, { color: colors.text }]}>{veterinario.nome}</Text>

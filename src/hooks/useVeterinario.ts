@@ -1,24 +1,22 @@
 import { useQuery } from '@tanstack/react-query';
 import { getVeterinarioById } from '../services/veterinarioService';
-import { useConsultas } from './useConsultas';
+import { useAuth } from './useAuth';
 import { queryKeys } from '../query/queryKeys';
 
 /**
  * Resolves the authenticated veterinarian's own real profile (name, CRMV,
  * especialidade, email, clinic) for display — never fabricated.
  *
- * There's still no `/me` endpoint, so this reuses the same workaround
- * already established in NewConsultaScreen.tsx: `GET /api/consultas` is
- * scoped server-side to the authenticated vet, so any row in it carries
- * this account's real `veterinarioId`. That id is then used to fetch the
- * full record from `GET /api/veterinarios/{id}`.
- *
- * If this account has zero consultations yet, `veterinarioId` can't be
- * resolved this way — `data` stays `undefined` rather than guessing.
+ * `veterinarioId` comes directly from `GET /api/auth/me` (via `AuthContext`'s
+ * `identity`) — confirmed always resolvable for an authenticated VETERINARIO
+ * regardless of consultation history. This replaces the old workaround that
+ * inferred it from `GET /api/consultas[0].veterinarioId`, which left a
+ * brand-new, zero-consultation veterinarian's own profile permanently
+ * unresolvable.
  */
 export function useOwnVeterinario() {
-  const { data: consultas, isPending: resolvingId } = useConsultas();
-  const veterinarioId = consultas && consultas.length > 0 ? consultas[0].veterinarioId : null;
+  const { identity } = useAuth();
+  const veterinarioId = identity?.veterinarioId ?? null;
 
   const query = useQuery({
     queryKey: queryKeys.veterinarios.detail(veterinarioId ?? -1),
@@ -28,7 +26,7 @@ export function useOwnVeterinario() {
 
   return {
     ...query,
-    isPending: resolvingId || (veterinarioId != null && query.isPending),
+    isPending: veterinarioId == null || query.isPending,
     veterinarioId,
   };
 }

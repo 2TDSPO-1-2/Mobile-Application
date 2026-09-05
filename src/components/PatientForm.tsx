@@ -23,10 +23,6 @@ interface Props {
   submitting: boolean;
   submitLabel: string;
   errorMessage?: string;
-  /** Section 17: a non-blocking "similar name already exists" hint, computed by the caller from already-loaded clinic results. */
-  duplicateWarning?: string;
-  /** Mirrors the live `nome` field up to the caller (e.g. to drive the duplicate-name check) without lifting the whole form's state out. */
-  onNameChange?: (nome: string) => void;
 }
 
 /**
@@ -40,8 +36,6 @@ export function PatientForm({
   submitting,
   submitLabel,
   errorMessage,
-  duplicateWarning,
-  onNameChange,
 }: Props) {
   const colors = useThemeColors();
   const { t } = useTranslation();
@@ -56,11 +50,7 @@ export function PatientForm({
     { value: 'N', label: t('common.no') },
   ];
 
-  const [nome, setNomeState] = useState(initialValues?.nome ?? '');
-  const setNome = (value: string) => {
-    setNomeState(value);
-    onNameChange?.(value);
-  };
+  const [nome, setNome] = useState(initialValues?.nome ?? '');
   const [especieId, setEspecieId] = useState<number | null>(initialValues?.especieId ?? null);
   const [racaId, setRacaId] = useState<number | null>(initialValues?.racaId ?? null);
   const [sexo, setSexo] = useState<'M' | 'F' | null>(initialValues?.sexo ?? null);
@@ -124,11 +114,6 @@ export function PatientForm({
         value={nome}
         onChangeText={setNome}
       />
-      {duplicateWarning ? (
-        <Text style={{ color: colors.warning, fontSize: fontSize.sm, marginTop: -spacing.sm, marginBottom: spacing.sm }}>
-          {duplicateWarning}
-        </Text>
-      ) : null}
 
       <ChipGroup
         label={t('patientForm.speciesLabel')}

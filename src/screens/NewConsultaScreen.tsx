@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -14,8 +14,8 @@ import { TimeField } from '../components/TimeField';
 import { EmptyState } from '../components/EmptyState';
 import { useThemeColors } from '../hooks/useThemeColors';
 import { useTranslation } from '../i18n/useTranslation';
-import { useClinicPatients } from '../hooks/usePatients';
-import { useConsultas, useCreateConsulta } from '../hooks/useConsultas';
+import { useMyPatients } from '../hooks/usePatients';
+import { useCreateConsulta } from '../hooks/useConsultas';
 import type { AnimalDto } from '../services/patientService';
 import type { Modalidade } from '../services/consultaService';
 import type { AppStackParamList } from '../interfaces/navigation';
@@ -45,14 +45,11 @@ export function NewConsultaScreen() {
   const colors = useThemeColors();
   const { t } = useTranslation();
 
-  // The backend has no endpoint for "which veterinarian am I" (see
-  // consultaService.ts). Since GET /api/consultas is scoped server-side to
-  // the authenticated veterinarian, any consultation already in that list
-  // carries the correct veterinarioId — reusing the same query here costs no
-  // extra request if ConsultasScreen already fetched it.
-  const { data: ownConsultas, isPending: resolvingVeterinario } = useConsultas();
-  const veterinarioId = ownConsultas && ownConsultas.length > 0 ? ownConsultas[0].veterinarioId : null;
-
+  // For an authenticated VETERINARIO, Java derives the veterinarian from the
+  // principal on `POST /api/consultas` — this screen never needs to know or
+  // send its own `veterinarioId` (see `consultaService.ts`). A brand-new
+  // veterinarian with zero consultations sees this form immediately, with
+  // no identity-resolution gate in front of it.
   const createMutation = useCreateConsulta();
 
   const [selectedAnimal, setSelectedAnimal] = useState<AnimalDto | null>(null);
@@ -82,31 +79,25 @@ export function NewConsultaScreen() {
   }, [searchInput]);
 
   const trimmedSearch = debouncedSearch.trim();
-  // No `enabled` gate anymore — the clinic patient list loads immediately
-  // with no `nome` filter (server-side "all active clinic patients"), and
-  // simply re-queries with the typed term once the debounce settles. Same
-  // endpoint either way (`GET /api/animais/clinica`), no client-side fake
-  // filtering, server stays the source of truth.
+  // No `enabled` gate anymore — the patient list loads immediately with no
+  // `nome` filter (server-side "all of my accessible patients"), and simply
+  // re-queries with the typed term once the debounce settles. Same endpoint
+  // either way (`GET /api/animais/me`), no client-side fake filtering,
+  // server stays the source of truth.
   const {
     data: clinicPatients,
     isPending: patientsPending,
     isError: patientsError,
-  } = useClinicPatients({ nome: trimmedSearch || undefined });
+  } = useMyPatients({ nome: trimmedSearch || undefined });
 
   const handleSelectAnimal = (animal: AnimalDto) => {
     setSelectedAnimal(animal);
     setChangingPatient(false);
   };
 
-  const canIdentifyVeterinario = !resolvingVeterinario && veterinarioId != null;
-
   const handleSave = async () => {
     setError('');
 
-    if (!veterinarioId) {
-      setError(t('newConsulta.errorNoVet'));
-      return;
-    }
     if (!selectedAnimal) {
       setError(t('newConsulta.errorNoPatient'));
       return;
@@ -131,7 +122,6 @@ export function NewConsultaScreen() {
     try {
       const created = await createMutation.mutateAsync({
         animalId: selectedAnimal.id,
-        veterinarioId,
         modalidade,
         dataHora: toLocalDateTimeString(date, time),
         motivo: motivo.trim(),
@@ -143,25 +133,12 @@ export function NewConsultaScreen() {
     }
   };
 
-  const formDisabled = useMemo(
-    () => resolvingVeterinario || !canIdentifyVeterinario,
-    [resolvingVeterinario, canIdentifyVeterinario]
-  );
-
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
       <AppHeader title={t('newConsulta.title')} />
 
       <ScreenContainer>
-        {resolvingVeterinario ? (
-          <Text style={{ color: colors.textSecondary, marginBottom: spacing.md }}>
-            {t('newConsulta.resolvingVet')}
-          </Text>
-        ) : !canIdentifyVeterinario ? (
-          <EmptyState title={t('newConsulta.noVetTitle')} message={t('newConsulta.noVetMessage')} />
-        ) : (
-          <>
-            {/* PACIENTE */}
+        {/* PACIENTE */}
             <Text style={[commonStyles.eyebrow, styles.sectionLabelFirst, { color: colors.primary }]}>
               {t('newConsulta.patientSection')}
             </Text>
@@ -316,11 +293,9 @@ export function NewConsultaScreen() {
               title={t('newConsulta.submit')}
               onPress={handleSave}
               loading={createMutation.isPending}
-              disabled={createMutation.isPending || formDisabled}
+              disabled={createMutation.isPending}
               style={styles.submitButton}
             />
-          </>
-        )}
       </ScreenContainer>
     </View>
   );
