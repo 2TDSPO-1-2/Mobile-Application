@@ -60,8 +60,8 @@ export function EditPrescricaoScreen() {
             dosagem: prescricao.dosagem,
             frequencia: prescricao.frequencia ?? '',
             viaAdministracao: prescricao.viaAdministracao,
-            dataInicio: toDisplayDate(prescricao.dataInicio),
-            dataFim: toDisplayDate(prescricao.dataFim),
+            dataInicio: prescricao.dataInicio,
+            dataFim: prescricao.dataFim ?? '',
             instrucoes: prescricao.instrucoes ?? '',
           }}
           onSubmit={handleSubmit}

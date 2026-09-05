@@ -3,10 +3,10 @@ import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { AppCard } from './AppCard';
 import { AppInput } from './AppInput';
 import { AppButton } from './AppButton';
+import { DateField } from './DateField';
 import { useThemeColors } from '../hooks/useThemeColors';
 import type { PrescricaoRequestInput, ViaAdministracao } from '../services/prescricaoService';
 import { VIA_ADMINISTRACAO_OPTIONS, viaAdministracaoLabel } from '../utils/viaAdministracao';
-import { toIsoDate } from '../utils/isoDate';
 import { spacing, fontSize, radius } from '../styles/theme';
 
 export interface PrescricaoFormValues {
@@ -14,11 +14,32 @@ export interface PrescricaoFormValues {
   dosagem: string;
   frequencia: string;
   viaAdministracao: ViaAdministracao | null;
-  /** DD-MM-AAAA display format. */
+  /** ISO YYYY-MM-DD — the exact format the backend persists and returns. */
   dataInicio: string;
-  /** DD-MM-AAAA display format. */
+  /** ISO YYYY-MM-DD, or empty when not set. */
   dataFim: string;
   instrucoes: string;
+}
+
+/**
+ * Parses/formats a date-only ISO string as a LOCAL calendar date (never
+ * `new Date(isoString)`/`.toISOString()`, both of which are UTC-based and
+ * can silently shift the day by one depending on the device's timezone
+ * offset — the exact bug this app has already hit once with `dataHora`).
+ */
+function parseIsoDateLocal(value?: string | null): Date | null {
+  if (!value) return null;
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return null;
+  const [, y, m, d] = match;
+  return new Date(Number(y), Number(m) - 1, Number(d));
+}
+
+function formatIsoDateLocal(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
 }
 
 interface Props {
@@ -55,8 +76,10 @@ export function PrescricaoForm({
   const [viaAdministracao, setViaAdministracao] = useState<ViaAdministracao | null>(
     initialValues?.viaAdministracao ?? null
   );
-  const [dataInicio, setDataInicio] = useState(initialValues?.dataInicio ?? '');
-  const [dataFim, setDataFim] = useState(initialValues?.dataFim ?? '');
+  const [dataInicio, setDataInicio] = useState<Date | null>(
+    parseIsoDateLocal(initialValues?.dataInicio)
+  );
+  const [dataFim, setDataFim] = useState<Date | null>(parseIsoDateLocal(initialValues?.dataFim));
   const [instrucoes, setInstrucoes] = useState(initialValues?.instrucoes ?? '');
   const [validationError, setValidationError] = useState('');
 
@@ -71,13 +94,13 @@ export function PrescricaoForm({
       setValidationError('Informe a dosagem.');
       return;
     }
-    if (!dataInicio.trim()) {
+    if (!dataInicio) {
       setValidationError('Informe a data de início do tratamento.');
       return;
     }
 
-    const isoInicio = toIsoDate(dataInicio);
-    const isoFim = dataFim.trim() ? toIsoDate(dataFim) : undefined;
+    const isoInicio = formatIsoDateLocal(dataInicio);
+    const isoFim = dataFim ? formatIsoDateLocal(dataFim) : undefined;
 
     if (isoFim && isoFim < isoInicio) {
       setValidationError('A data de término não pode ser anterior à data de início.');
@@ -148,21 +171,9 @@ export function PrescricaoForm({
         ))}
       </View>
 
-      <AppInput
-        label="Data de início"
-        placeholder="DD-MM-AAAA"
-        value={dataInicio}
-        onChangeText={setDataInicio}
-        editable={!isSubmitting}
-      />
+      <DateField label="Data de início" value={dataInicio} onChange={setDataInicio} />
 
-      <AppInput
-        label="Data de término (opcional)"
-        placeholder="DD-MM-AAAA"
-        value={dataFim}
-        onChangeText={setDataFim}
-        editable={!isSubmitting}
-      />
+      <DateField label="Data de término (opcional)" value={dataFim} onChange={setDataFim} />
 
       <AppInput
         label="Instruções"

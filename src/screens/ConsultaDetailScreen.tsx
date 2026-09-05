@@ -26,7 +26,6 @@ import { findConfirmedDiagnosis } from '../services/diagnosticoService';
 import type { FinalizarConsultaRequest } from '../services/consultaService';
 import { consultaStatusPresentation } from '../utils/statusPresentation';
 import {
-  describeClinicalSupportError,
   describeFinalizeError,
   describeNarrativeSaveError,
 } from '../utils/errorMessages';
@@ -49,7 +48,7 @@ export function ConsultaDetailScreen() {
   const startMutation = useStartConsulta(consultaId);
   const deleteMutation = useDeleteConsulta();
   const finalizeMutation = useFinalizeConsulta(consultaId);
-  const { saveNarrativa, requestSupport, requestClinicalSupportFromDraft } =
+  const { saveNarrativa, requestClinicalSupportFromDraft, supportPhase, supportErrorMessage } =
     useConsultaWorkflow(consultaId);
 
   const supportEnabled = consulta?.status === 'AP' || consulta?.status === 'FI';
@@ -123,7 +122,7 @@ export function ConsultaDetailScreen() {
     try {
       await requestClinicalSupportFromDraft(draft);
     } catch {
-      // Surfaced via saveNarrativa.isError / requestSupport.isError below — nothing else to do here.
+      // Surfaced via saveNarrativa.isError / supportPhase === 'error' below — nothing else to do here.
     }
   };
 
@@ -228,7 +227,7 @@ export function ConsultaDetailScreen() {
             <ClinicalNarrativeEditor
               value={draft}
               onChangeText={handleChangeDraft}
-              editable={!requestSupport.isPending}
+              editable={supportPhase !== 'analyzing'}
               statusLabel={narrativeStatusLabel}
               statusTone={narrativeStatusTone}
               errorMessage={narrativeErrorMessage}
@@ -239,24 +238,24 @@ export function ConsultaDetailScreen() {
               variant="outline"
               onPress={handleSaveNarrativa}
               loading={saveNarrativa.isPending}
-              disabled={!dirty || saveNarrativa.isPending || requestSupport.isPending}
+              disabled={!dirty || saveNarrativa.isPending || supportPhase === 'analyzing'}
             />
 
-            {requestSupport.isPending ? (
+            {supportPhase === 'analyzing' ? (
               <AppCard>
                 <Text style={{ color: colors.text, fontWeight: '700', marginBottom: spacing.xs }}>
                   Analisando o caso clínico...
                 </Text>
                 <Text style={{ color: colors.textSecondary }}>
-                  A análise pode levar alguns instantes.
+                  O motor clínico pode levar alguns instantes para iniciar.
                 </Text>
               </AppCard>
             ) : (
               <>
-                {requestSupport.isError ? (
+                {supportPhase === 'error' ? (
                   <>
                     <Text style={{ color: colors.error, marginBottom: spacing.sm }}>
-                      {describeClinicalSupportError(requestSupport.error)}
+                      {supportErrorMessage}
                     </Text>
                     <AppButton
                       title="Verificar se já foi processado"
