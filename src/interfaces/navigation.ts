@@ -1,4 +1,5 @@
 import type { Animal, Appointment, UserRole } from '../types';
+import type { AnimalDto } from '../services/patientService';
 
 export type AuthStackParamList = {
   Login: undefined;
@@ -18,7 +19,13 @@ export type AppStackParamList = {
   AcompanhamentoAnimal: { animalId: string };
   NovaConsulta: { animalId?: string };
   ConsultaDetalhe: { consultaId: number };
-  CriarConsulta: undefined;
+  AnaliseArkive: { consultaId: number };
+  InsightArkive: { consultaId: number };
+  ConclusaoVeterinaria: { consultaId: number };
+  CriarConsulta: { preselectedAnimal?: AnimalDto } | undefined;
+  NovoPaciente: undefined;
+  PacienteDetalhe: { patientId: number };
+  EditarPaciente: { patientId: number };
   Prescricoes: { consultaId: number };
   NovaPrescricao: { consultaId: number };
   PrescricaoDetalhe: { prescricaoId: number; consultaId: number };

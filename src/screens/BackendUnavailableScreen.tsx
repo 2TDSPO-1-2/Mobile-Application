@@ -4,6 +4,7 @@ import { ScreenContainer } from '../components/ScreenContainer';
 import { AppButton } from '../components/AppButton';
 import { useAuth } from '../hooks/useAuth';
 import { useThemeColors } from '../hooks/useThemeColors';
+import { useTranslation } from '../i18n/useTranslation';
 import { spacing, fontSize } from '../styles/theme';
 
 /**
@@ -15,6 +16,7 @@ import { spacing, fontSize } from '../styles/theme';
 export function BackendUnavailableScreen() {
   const { refreshUser } = useAuth();
   const colors = useThemeColors();
+  const { t } = useTranslation();
   const [retrying, setRetrying] = useState(false);
 
   const handleRetry = async () => {
@@ -27,13 +29,11 @@ export function BackendUnavailableScreen() {
     <View style={[styles.root, { backgroundColor: colors.background }]}>
       <ScreenContainer>
         <View style={styles.center}>
-          <Text style={[styles.title, { color: colors.text }]}>Servidor indisponível</Text>
+          <Text style={[styles.title, { color: colors.text }]}>{t('backendUnavailable.title')}</Text>
           <Text style={[styles.message, { color: colors.textSecondary }]}>
-            Não foi possível confirmar sua sessão com o servidor do ArkIve agora. Isso costuma
-            acontecer quando o servidor está iniciando após um período inativo. Suas credenciais
-            continuam salvas com segurança neste aparelho.
+            {t('backendUnavailable.message')}
           </Text>
-          <AppButton title="Tentar novamente" onPress={handleRetry} loading={retrying} />
+          <AppButton title={t('common.tryAgain')} onPress={handleRetry} loading={retrying} />
         </View>
       </ScreenContainer>
     </View>

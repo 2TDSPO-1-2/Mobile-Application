@@ -6,6 +6,7 @@ import { ScreenContainer } from '../components/ScreenContainer';
 import { AppCard } from '../components/AppCard';
 import { AppButton } from '../components/AppButton';
 import { useThemeColors } from '../hooks/useThemeColors';
+import { useTranslation } from '../i18n/useTranslation';
 import type { AuthStackParamList } from '../interfaces/navigation';
 import { spacing, fontSize } from '../styles/theme';
 
@@ -21,6 +22,7 @@ export function RegisterScreen() {
   const navigation =
     useNavigation<NativeStackNavigationProp<AuthStackParamList>>();
   const colors = useThemeColors();
+  const { t } = useTranslation();
 
   return (
     <ScreenContainer scroll edges={['top', 'bottom']}>
@@ -29,18 +31,15 @@ export function RegisterScreen() {
           source={require('../assets/branding/definitive.png')}
           style={styles.logo}
           resizeMode="contain"
+          tintColor="#000000"
         />
       </View>
 
       <AppCard>
-        <Text style={[styles.title, { color: colors.text }]}>Cadastro</Text>
-        <Text style={[styles.message, { color: colors.textSecondary }]}>
-          O cadastro de veterinários ainda não está disponível diretamente pelo aplicativo. O
-          acesso ao ArkIve é criado pela administração da clínica. Se você já possui usuário e
-          senha, volte para a tela de login.
-        </Text>
+        <Text style={[styles.title, { color: colors.text }]}>{t('auth.registerTitle')}</Text>
+        <Text style={[styles.message, { color: colors.textSecondary }]}>{t('auth.registerMessage')}</Text>
 
-        <AppButton title="Voltar para o login" onPress={() => navigation.goBack()} />
+        <AppButton title={t('auth.registerBackButton')} onPress={() => navigation.goBack()} />
       </AppCard>
     </ScreenContainer>
   );

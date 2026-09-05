@@ -15,11 +15,26 @@ export const queryKeys = {
   patients: {
     all: ['patients'] as const,
     list: () => [...queryKeys.patients.all, 'list'] as const,
+    clinic: (filters?: { nome?: string; especieId?: number; racaId?: number }) =>
+      [...queryKeys.patients.all, 'clinic', filters ?? {}] as const,
+    detail: (id: string | number) => [...queryKeys.patients.all, 'detail', id] as const,
+  },
+  especies: {
+    all: ['especies'] as const,
+    list: () => [...queryKeys.especies.all, 'list'] as const,
+  },
+  racas: {
+    all: ['racas'] as const,
+    byEspecie: (especieId: number) => [...queryKeys.racas.all, 'by-especie', especieId] as const,
   },
   diagnosticos: {
     all: ['diagnosticos'] as const,
     byConsulta: (consultaId: string | number) =>
       [...queryKeys.diagnosticos.all, 'by-consulta', consultaId] as const,
+  },
+  veterinarios: {
+    all: ['veterinarios'] as const,
+    detail: (id: string | number) => [...queryKeys.veterinarios.all, 'detail', id] as const,
   },
   prescricoes: {
     all: ['prescricoes'] as const,

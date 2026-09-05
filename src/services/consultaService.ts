@@ -1,4 +1,13 @@
-import { apiDelete, apiGet, apiPatch, apiPost, apiPut, ApiError, NetworkError } from './apiClient';
+import {
+  apiDelete,
+  apiGet,
+  apiPatch,
+  apiPost,
+  apiPut,
+  ApiError,
+  NetworkError,
+  isTransientInfraError,
+} from './apiClient';
 
 /**
  * TEMPORARY diagnostic — sanitized (id, HTTP status, and the backend's own
@@ -117,6 +126,15 @@ export interface ClinicalSupportResponse {
   severidadeSugerida: string;
   insightClinico: string;
   confianca: number | null;
+  /**
+   * V4 addition — external research sources the clinical engine consulted,
+   * persisted server-side (survives AP/FI/reopen). Optional because a
+   * currently-deployed backend may not have this field yet; every caller
+   * must normalize with `support.fontesPesquisadas ?? []`, never assume
+   * presence. Whether this is empty/populated is entirely the clinical
+   * engine's decision — never derive it from `confianca` on the client.
+   */
+  fontesPesquisadas?: string[];
 }
 
 /** `FinalizarConsultaRequest.java` — the veterinarian's conclusion, confirmed, not called yet. */
@@ -188,14 +206,30 @@ export async function getClinicalSupport(id: number): Promise<ClinicalSupportRes
 }
 
 /**
+ * A 404 from `getClinicalSupport` does not necessarily mean support will
+ * never exist — confirmed physical race: right after generation POSTs 200,
+ * the very next GET can still 404 briefly before the write is visible to a
+ * read. For a consultation whose workflow already moved past EP (AP or FI),
+ * persisted support is expected sooner or later, so a 404 there reads the
+ * same as a transient infra hiccup: keep loading and retry, never a hard
+ * failure card. Only ever call this GET's caller sites for AP/FI/insight
+ * contexts — that's what makes treating 404 as transient safe here.
+ */
+export function isSupportNotYetPersisted(error: unknown): boolean {
+  if (error instanceof ApiError && error.status === 404) return true;
+  return isTransientInfraError(error);
+}
+
+/**
  * Confirmed: `ConsultaWorkflowService.atualizarNarrativa` accepts this while
  * the consultation is EP *or* AP, and stores the text on `Consulta.transcricao`
  * (the request field is called `narrativa`; the field holding the same text
  * on every response DTO is `transcricao` — not a naming mismatch, two
  * different DTOs for two different directions).
  *
- * Only ever call this from useConsultaWorkflow.ts, awaited to completion,
- * before requestClinicalSupport — never in parallel with it.
+ * Only ever call this via useSaveNarrativa from ConsultaDetailScreen's
+ * handleAnalyze, awaited to completion before ever navigating to the
+ * screen that calls requestClinicalSupport — never in parallel with it.
  */
 export async function updateNarrativa(
   id: number,

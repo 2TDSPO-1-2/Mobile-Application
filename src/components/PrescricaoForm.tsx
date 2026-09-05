@@ -3,10 +3,11 @@ import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { AppCard } from './AppCard';
 import { AppInput } from './AppInput';
 import { AppButton } from './AppButton';
+import { DateField } from './DateField';
 import { useThemeColors } from '../hooks/useThemeColors';
+import { useTranslation } from '../i18n/useTranslation';
 import type { PrescricaoRequestInput, ViaAdministracao } from '../services/prescricaoService';
 import { VIA_ADMINISTRACAO_OPTIONS, viaAdministracaoLabel } from '../utils/viaAdministracao';
-import { toIsoDate } from '../utils/isoDate';
 import { spacing, fontSize, radius } from '../styles/theme';
 
 export interface PrescricaoFormValues {
@@ -14,11 +15,32 @@ export interface PrescricaoFormValues {
   dosagem: string;
   frequencia: string;
   viaAdministracao: ViaAdministracao | null;
-  /** DD-MM-AAAA display format. */
+  /** ISO YYYY-MM-DD — the exact format the backend persists and returns. */
   dataInicio: string;
-  /** DD-MM-AAAA display format. */
+  /** ISO YYYY-MM-DD, or empty when not set. */
   dataFim: string;
   instrucoes: string;
+}
+
+/**
+ * Parses/formats a date-only ISO string as a LOCAL calendar date (never
+ * `new Date(isoString)`/`.toISOString()`, both of which are UTC-based and
+ * can silently shift the day by one depending on the device's timezone
+ * offset — the exact bug this app has already hit once with `dataHora`).
+ */
+function parseIsoDateLocal(value?: string | null): Date | null {
+  if (!value) return null;
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return null;
+  const [, y, m, d] = match;
+  return new Date(Number(y), Number(m) - 1, Number(d));
+}
+
+function formatIsoDateLocal(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
 }
 
 interface Props {
@@ -48,6 +70,7 @@ export function PrescricaoForm({
   submitLabel,
 }: Props) {
   const colors = useThemeColors();
+  const { t } = useTranslation();
 
   const [medicamento, setMedicamento] = useState(initialValues?.medicamento ?? '');
   const [dosagem, setDosagem] = useState(initialValues?.dosagem ?? '');
@@ -55,8 +78,10 @@ export function PrescricaoForm({
   const [viaAdministracao, setViaAdministracao] = useState<ViaAdministracao | null>(
     initialValues?.viaAdministracao ?? null
   );
-  const [dataInicio, setDataInicio] = useState(initialValues?.dataInicio ?? '');
-  const [dataFim, setDataFim] = useState(initialValues?.dataFim ?? '');
+  const [dataInicio, setDataInicio] = useState<Date | null>(
+    parseIsoDateLocal(initialValues?.dataInicio)
+  );
+  const [dataFim, setDataFim] = useState<Date | null>(parseIsoDateLocal(initialValues?.dataFim));
   const [instrucoes, setInstrucoes] = useState(initialValues?.instrucoes ?? '');
   const [validationError, setValidationError] = useState('');
 
@@ -64,23 +89,23 @@ export function PrescricaoForm({
     setValidationError('');
 
     if (!medicamento.trim()) {
-      setValidationError('Informe o medicamento.');
+      setValidationError(t('prescricaoForm.validationNoMedicamento'));
       return;
     }
     if (!dosagem.trim()) {
-      setValidationError('Informe a dosagem.');
+      setValidationError(t('prescricaoForm.validationNoDosagem'));
       return;
     }
-    if (!dataInicio.trim()) {
-      setValidationError('Informe a data de início do tratamento.');
+    if (!dataInicio) {
+      setValidationError(t('prescricaoForm.validationNoDataInicio'));
       return;
     }
 
-    const isoInicio = toIsoDate(dataInicio);
-    const isoFim = dataFim.trim() ? toIsoDate(dataFim) : undefined;
+    const isoInicio = formatIsoDateLocal(dataInicio);
+    const isoFim = dataFim ? formatIsoDateLocal(dataFim) : undefined;
 
     if (isoFim && isoFim < isoInicio) {
-      setValidationError('A data de término não pode ser anterior à data de início.');
+      setValidationError(t('prescricaoForm.validationDataFimBeforeInicio'));
       return;
     }
 
@@ -103,30 +128,30 @@ export function PrescricaoForm({
       </Text>
 
       <AppInput
-        label="Medicamento"
-        placeholder="Ex.: Amoxicilina com clavulanato"
+        label={t('prescricaoForm.medicamentoLabel')}
+        placeholder={t('prescricaoForm.medicamentoPlaceholder')}
         value={medicamento}
         onChangeText={setMedicamento}
         editable={!isSubmitting}
       />
 
       <AppInput
-        label="Dosagem"
-        placeholder="Ex.: 1 comprimido"
+        label={t('prescricaoForm.dosagemLabel')}
+        placeholder={t('prescricaoForm.dosagemPlaceholder')}
         value={dosagem}
         onChangeText={setDosagem}
         editable={!isSubmitting}
       />
 
       <AppInput
-        label="Frequência"
-        placeholder="Ex.: 12/12h"
+        label={t('prescricaoForm.frequenciaLabel')}
+        placeholder={t('prescricaoForm.frequenciaPlaceholder')}
         value={frequencia}
         onChangeText={setFrequencia}
         editable={!isSubmitting}
       />
 
-      <Text style={[styles.label, { color: colors.text }]}>Via de administração</Text>
+      <Text style={[styles.label, { color: colors.text }]}>{t('prescricaoForm.viaLabel')}</Text>
       <View style={styles.chipRow}>
         {VIA_ADMINISTRACAO_OPTIONS.map((option) => (
           <Pressable
@@ -148,25 +173,13 @@ export function PrescricaoForm({
         ))}
       </View>
 
-      <AppInput
-        label="Data de início"
-        placeholder="DD-MM-AAAA"
-        value={dataInicio}
-        onChangeText={setDataInicio}
-        editable={!isSubmitting}
-      />
+      <DateField label={t('prescricaoForm.dataInicioLabel')} value={dataInicio} onChange={setDataInicio} />
+
+      <DateField label={t('prescricaoForm.dataFimLabel')} value={dataFim} onChange={setDataFim} />
 
       <AppInput
-        label="Data de término (opcional)"
-        placeholder="DD-MM-AAAA"
-        value={dataFim}
-        onChangeText={setDataFim}
-        editable={!isSubmitting}
-      />
-
-      <AppInput
-        label="Instruções"
-        placeholder="Instruções adicionais para o responsável"
+        label={t('prescricaoForm.instrucoesLabel')}
+        placeholder={t('prescricaoForm.instrucoesPlaceholder')}
         value={instrucoes}
         onChangeText={setInstrucoes}
         editable={!isSubmitting}
@@ -180,7 +193,7 @@ export function PrescricaoForm({
       ) : null}
 
       <AppButton
-        title={isSubmitting ? 'Salvando...' : submitLabel}
+        title={isSubmitting ? t('prescricaoForm.submitting') : submitLabel}
         onPress={handleSubmit}
         loading={isSubmitting}
         disabled={isSubmitting}

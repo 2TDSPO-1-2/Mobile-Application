@@ -6,6 +6,7 @@ import { ScreenContainer } from '../components/ScreenContainer';
 import { EmptyState } from '../components/EmptyState';
 import { PrescricaoForm } from '../components/PrescricaoForm';
 import { useThemeColors } from '../hooks/useThemeColors';
+import { useTranslation } from '../i18n/useTranslation';
 import { useConsulta } from '../hooks/useConsultas';
 import { useCreatePrescricao } from '../hooks/usePrescricoes';
 import { describePrescricaoError } from '../utils/errorMessages';
@@ -26,6 +27,7 @@ export function NewPrescricaoScreen() {
   const route = useRoute<RouteProp<AppStackParamList, 'NovaPrescricao'>>();
   const navigation = useNavigation();
   const colors = useThemeColors();
+  const { t } = useTranslation();
   const { consultaId } = route.params;
 
   const { data: consulta, isPending } = useConsulta(consultaId);
@@ -43,9 +45,9 @@ export function NewPrescricaoScreen() {
   if (isPending) {
     return (
       <View style={{ flex: 1, backgroundColor: colors.background }}>
-        <AppHeader title="Nova Prescrição" />
+        <AppHeader title={t('prescricaoForm.newTitle')} />
         <Text style={{ color: colors.textSecondary, textAlign: 'center', marginTop: spacing.xl }}>
-          Carregando consulta...
+          {t('prescricaoForm.loadingConsulta')}
         </Text>
       </View>
     );
@@ -54,11 +56,11 @@ export function NewPrescricaoScreen() {
   if (!consulta || consulta.status !== 'FI') {
     return (
       <View style={{ flex: 1, backgroundColor: colors.background }}>
-        <AppHeader title="Nova Prescrição" />
+        <AppHeader title={t('prescricaoForm.newTitle')} />
         <ScreenContainer>
           <EmptyState
-            title="Ação indisponível"
-            message="Prescrições só podem ser criadas para consultas finalizadas."
+            title={t('prescricaoForm.unavailableTitle')}
+            message={t('prescricaoForm.unavailableMessage')}
           />
         </ScreenContainer>
       </View>
@@ -67,7 +69,7 @@ export function NewPrescricaoScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <AppHeader title="Nova Prescrição" />
+      <AppHeader title={t('prescricaoForm.newTitle')} />
       <ScreenContainer>
         <PrescricaoForm
           patientName={consulta.animalNome}
@@ -77,7 +79,7 @@ export function NewPrescricaoScreen() {
           errorMessage={
             createMutation.isError ? describePrescricaoError(createMutation.error) : undefined
           }
-          submitLabel="Criar prescrição"
+          submitLabel={t('prescricaoForm.createSubmit')}
         />
       </ScreenContainer>
     </View>

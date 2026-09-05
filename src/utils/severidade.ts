@@ -1,13 +1,11 @@
 import type { Severidade } from '../services/consultaService';
+import { t } from '../i18n/store';
 
-const LABELS: Record<Severidade, string> = {
-  LEVE: 'Leve',
-  MODERADA: 'Moderada',
-  GRAVE: 'Grave',
-};
+const KNOWN: Severidade[] = ['LEVE', 'MODERADA', 'GRAVE'];
 
-/** Renders a confirmed Severidade code as its Portuguese label; falls back to the raw value for anything unrecognized (e.g. AI-suggested text that isn't one of the three confirmed codes). */
+/** Renders a confirmed Severidade code as its localized label; falls back to the raw value for anything unrecognized (e.g. AI-suggested text that isn't one of the three confirmed codes). */
 export function severidadeLabel(value?: string | null): string {
-  if (!value) return 'Não informada';
-  return LABELS[value as Severidade] ?? value;
+  if (!value) return t('severidade.notInformed');
+  if (!KNOWN.includes(value as Severidade)) return value;
+  return t(`severidade.${value as Severidade}`);
 }

@@ -2,19 +2,18 @@ import React, { useState } from 'react';
 import { View, Text, Pressable, StyleSheet, Platform, Modal } from 'react-native';
 import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { useThemeColors } from '../hooks/useThemeColors';
+import { useTheme } from '../context/ThemeContext';
+import { useTranslation } from '../i18n/useTranslation';
 import { spacing, radius, fontSize } from '../styles/theme';
 import { commonStyles } from '../styles/common';
 import { CalendarGlyph } from './CalendarGlyph';
+import { formatDate } from '../utils/localeFormat';
 
 interface Props {
   label: string;
   value: Date | null;
   onChange: (date: Date) => void;
   error?: string;
-}
-
-function formatBR(date: Date): string {
-  return date.toLocaleDateString('pt-BR');
 }
 
 /**
@@ -37,6 +36,8 @@ function formatBR(date: Date): string {
  */
 export function DateField({ label, value, onChange, error }: Props) {
   const colors = useThemeColors();
+  const { mode } = useTheme();
+  const { t, language } = useTranslation();
   const [iosOpen, setIosOpen] = useState(false);
   const [draft, setDraft] = useState<Date>(value ?? new Date());
 
@@ -69,7 +70,7 @@ export function DateField({ label, value, onChange, error }: Props) {
         ]}
       >
         <Text style={{ color: value ? colors.text : colors.textSecondary, fontSize: fontSize.md }}>
-          {value ? formatBR(value) : 'DD/MM/AAAA'}
+          {value ? formatDate(value) : t('date.datePlaceholder')}
         </Text>
         <CalendarGlyph color={colors.primary} />
       </Pressable>
@@ -77,23 +78,30 @@ export function DateField({ label, value, onChange, error }: Props) {
 
       {Platform.OS === 'ios' ? (
         <Modal visible={iosOpen} transparent animationType="slide" onRequestClose={() => setIosOpen(false)}>
-          <Pressable style={styles.backdrop} onPress={() => setIosOpen(false)} />
-          <View style={[styles.sheet, { backgroundColor: colors.surface }]}>
-            <View style={[styles.sheetHeader, { borderBottomColor: colors.border }]}>
-              <Pressable onPress={() => setIosOpen(false)}>
-                <Text style={{ color: colors.textSecondary, fontSize: fontSize.sm }}>Cancelar</Text>
-              </Pressable>
-              <Pressable onPress={confirm}>
-                <Text style={{ color: colors.primary, fontWeight: '700', fontSize: fontSize.sm }}>Concluído</Text>
-              </Pressable>
+          <View style={styles.modalRoot}>
+            <Pressable style={StyleSheet.absoluteFill} onPress={() => setIosOpen(false)} />
+            <View style={[styles.sheet, { backgroundColor: colors.surface }]}>
+              <View style={[styles.sheetHeader, { borderBottomColor: colors.border }]}>
+                <Pressable onPress={() => setIosOpen(false)}>
+                  <Text style={{ color: colors.textSecondary, fontSize: fontSize.sm }}>{t('date.pickerCancel')}</Text>
+                </Pressable>
+                <Pressable onPress={confirm}>
+                  <Text style={{ color: colors.primary, fontWeight: '700', fontSize: fontSize.sm }}>
+                    {t('date.pickerDone')}
+                  </Text>
+                </Pressable>
+              </View>
+              <DateTimePicker
+                value={draft}
+                mode="date"
+                display="spinner"
+                locale={language}
+                themeVariant={mode === 'dark' ? 'dark' : 'light'}
+                textColor={colors.text}
+                style={styles.picker}
+                onValueChange={(_event, selected) => setDraft(selected)}
+              />
             </View>
-            <DateTimePicker
-              value={draft}
-              mode="date"
-              display="spinner"
-              locale="pt-BR"
-              onValueChange={(_event, selected) => setDraft(selected)}
-            />
           </View>
         </Modal>
       ) : null}
@@ -112,8 +120,16 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     paddingHorizontal: spacing.md,
   },
-  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)' },
+  // The backdrop MUST be position:'absolute' (removed from flex flow), not
+  // flex:1 — a flex:1 sibling in Modal's column layout consumes all
+  // available height before `sheet` gets any, so the picker rendered at
+  // zero height and never showed a single wheel/number.
+  modalRoot: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.35)' },
   sheet: { borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg },
+  // `themeVariant`/`textColor` alone don't help if the picker has no room —
+  // explicit height matches iOS's own intrinsic spinner height instead of
+  // relying on it to self-report a size inside a Modal-nested sheet.
+  picker: { width: '100%', height: 216 },
   sheetHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',

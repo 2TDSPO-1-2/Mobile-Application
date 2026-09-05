@@ -1,58 +1,60 @@
 import { ApiError, isNetworkError } from '../services/apiClient';
 import { RecordingFileError } from '../services/transcricaoService';
+import { InvalidPdfError } from '../services/consultaPdfService';
+import { t } from '../i18n/store';
 
 /** Translates a save-narrative failure into veterinarian-facing language — never the raw HTTP/API detail. */
 export function describeNarrativeSaveError(error: unknown): string {
   if (isNetworkError(error)) {
-    return 'Sem conexão com o servidor. A narrativa não foi salva — tente novamente.';
+    return t('errors.narrativeSaveNetwork');
   }
-  return 'Falha ao salvar a narrativa clínica. Tente novamente.';
+  return t('errors.narrativeSaveGeneric');
 }
 
 /** Translates a clinical-support request failure into veterinarian-facing language. */
 export function describeClinicalSupportError(error: unknown): string {
   if (error instanceof ApiError) {
     if (error.status === 403) {
-      return 'Você não tem permissão para solicitar apoio clínico para esta consulta.';
+      return t('errors.clinicalSupportForbidden');
     }
     if (error.status === 409) {
-      return 'O status desta consulta pode ter mudado. As informações foram atualizadas — verifique antes de tentar novamente.';
+      return t('errors.clinicalSupportConflict');
     }
     if (error.status >= 500) {
-      return 'O serviço de apoio clínico está indisponível no momento. Tente novamente em instantes.';
+      return t('errors.clinicalSupportUnavailable');
     }
-    return 'Não foi possível solicitar o apoio clínico agora.';
+    return t('errors.clinicalSupportGeneric');
   }
   if (isNetworkError(error)) {
-    return 'Sem conexão com o serviço de apoio clínico. Verifique sua internet antes de tentar novamente.';
+    return t('errors.clinicalSupportNetwork');
   }
-  return 'Não foi possível solicitar o apoio clínico agora.';
+  return t('errors.clinicalSupportGeneric');
 }
 
 /** Translates a finalization failure into veterinarian-facing language. */
 export function describeFinalizeError(error: unknown): string {
   if (error instanceof ApiError) {
     if (error.status === 400) {
-      return 'Verifique os dados informados na conclusão e tente novamente.';
+      return t('errors.finalizeValidation');
     }
     if (error.status === 403) {
-      return 'Você não tem permissão para finalizar esta consulta.';
+      return t('errors.finalizeForbidden');
     }
     if (error.status === 404) {
-      return 'Esta consulta não foi encontrada.';
+      return t('errors.finalizeNotFound');
     }
     if (error.status === 409) {
-      return 'O status desta consulta pode ter mudado. As informações foram atualizadas — verifique antes de tentar novamente.';
+      return t('errors.finalizeConflict');
     }
     if (error.status >= 500) {
-      return 'Não foi possível finalizar a consulta agora. Tente novamente em instantes.';
+      return t('errors.finalizeUnavailable');
     }
-    return 'Não foi possível finalizar a consulta agora.';
+    return t('errors.finalizeGeneric');
   }
   if (isNetworkError(error)) {
-    return 'Sem conexão com o servidor. A consulta não foi finalizada — tente novamente.';
+    return t('errors.finalizeNetwork');
   }
-  return 'Não foi possível finalizar a consulta agora.';
+  return t('errors.finalizeGeneric');
 }
 
 /**
@@ -64,26 +66,57 @@ export function describeFinalizeError(error: unknown): string {
 export function describePrescricaoError(error: unknown): string {
   if (error instanceof ApiError) {
     if (error.status === 400) {
-      return 'Verifique os dados da prescrição e tente novamente.';
+      return t('errors.prescricaoValidation');
     }
     if (error.status === 403) {
-      return 'Você não tem permissão para esta prescrição.';
+      return t('errors.prescricaoForbidden');
     }
     if (error.status === 404) {
-      return 'Esta prescrição não foi encontrada.';
+      return t('errors.prescricaoNotFound');
     }
     if (error.status === 409) {
-      return 'Esta prescrição já possui registro de adesão e não pode mais ser alterada ou excluída.';
+      return t('errors.prescricaoConflict');
     }
     if (error.status >= 500) {
-      return 'Não foi possível salvar a prescrição agora. Tente novamente em instantes.';
+      return t('errors.prescricaoUnavailable');
     }
-    return 'Não foi possível salvar a prescrição agora.';
+    return t('errors.prescricaoGeneric');
   }
   if (isNetworkError(error)) {
-    return 'Sem conexão com o servidor. A prescrição não foi salva — tente novamente.';
+    return t('errors.prescricaoNetwork');
   }
-  return 'Não foi possível salvar a prescrição agora.';
+  return t('errors.prescricaoGeneric');
+}
+
+/**
+ * Translates a patient create/update failure. The 403 case is confirmed to
+ * mean one specific thing for a VETERINARIO caller
+ * (`AnimalService.clinicaVeterinarioAutenticado`): the authenticated vet has
+ * no clinic linked, so the backend can't derive one to attach the patient to.
+ */
+export function describePatientError(error: unknown, isUpdate = false): string {
+  if (error instanceof ApiError) {
+    if (error.status === 400) {
+      return t('errors.patientValidation');
+    }
+    if (error.status === 403) {
+      return t('errors.patientForbidden');
+    }
+    if (error.status === 404) {
+      return t('errors.patientNotFound');
+    }
+    if (error.status === 409) {
+      return t('errors.patientConflict');
+    }
+    if (error.status >= 500) {
+      return isUpdate ? t('errors.patientUpdateUnavailable') : t('errors.patientCreateUnavailable');
+    }
+    return isUpdate ? t('errors.patientUpdateGeneric') : t('errors.patientCreateGeneric');
+  }
+  if (isNetworkError(error)) {
+    return isUpdate ? t('errors.patientUpdateNetwork') : t('errors.patientCreateNetwork');
+  }
+  return isUpdate ? t('errors.patientUpdateGeneric') : t('errors.patientCreateGeneric');
 }
 
 /**
@@ -95,31 +128,53 @@ export function describePrescricaoError(error: unknown): string {
  */
 export function describeTranscriptionError(error: unknown): string {
   if (error instanceof RecordingFileError) {
-    return 'A gravação não foi encontrada. Grave novamente.';
+    return t('errors.transcriptionFileMissing');
   }
   if (error instanceof ApiError) {
     if (error.status === 400) {
-      return 'Não foi possível processar este áudio.';
+      return t('errors.transcriptionBadAudio');
     }
     if (error.status === 403) {
-      return 'Seu usuário não possui permissão para usar a transcrição.';
+      return t('errors.transcriptionForbidden');
     }
     if (error.status === 413) {
-      return 'O áudio é muito grande. Grave uma mensagem mais curta.';
+      return t('errors.transcriptionTooLarge');
     }
     if (error.status === 422) {
-      return 'Nenhuma fala foi reconhecida. Tente novamente.';
+      return t('errors.transcriptionNoSpeech');
     }
     if (error.status === 429) {
-      return 'O serviço de transcrição está ocupado. Tente novamente em instantes.';
+      return t('errors.transcriptionBusy');
     }
     if (error.status === 502 || error.status === 503 || error.status >= 500) {
-      return 'O serviço de transcrição está temporariamente indisponível.';
+      return t('errors.transcriptionUnavailable');
     }
-    return 'Não foi possível transcrever o áudio agora.';
+    return t('errors.transcriptionGeneric');
   }
   if (isNetworkError(error)) {
-    return 'Não foi possível enviar o áudio. Verifique sua conexão e tente novamente.';
+    return t('errors.transcriptionNetwork');
   }
-  return 'Não foi possível transcrever o áudio agora.';
+  return t('errors.transcriptionGeneric');
+}
+
+/**
+ * Translates a `GET /api/consultas/{id}/resumo-pdf` failure. 403 (no
+ * permission) and 409 (consultation not FI yet) are confirmed backend
+ * outcomes; network/5xx is a simple "try again" — this endpoint is a plain
+ * read/export action, never worth an automatic retry loop.
+ */
+export function describeConsultaPdfError(error: unknown): string {
+  if (error instanceof InvalidPdfError) {
+    return t('errors.pdfInvalid');
+  }
+  if (error instanceof ApiError) {
+    if (error.status === 403) {
+      return t('errors.pdfForbidden');
+    }
+    if (error.status === 409) {
+      return t('errors.pdfNotFinalized');
+    }
+    return t('errors.pdfUnavailable');
+  }
+  return t('errors.pdfUnavailable');
 }

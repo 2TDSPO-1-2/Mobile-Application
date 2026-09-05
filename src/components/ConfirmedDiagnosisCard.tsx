@@ -2,6 +2,7 @@ import React from 'react';
 import { Text, StyleSheet } from 'react-native';
 import { AppCard } from './AppCard';
 import { useThemeColors } from '../hooks/useThemeColors';
+import { useTranslation } from '../i18n/useTranslation';
 import type { DiagnosticoDto } from '../services/diagnosticoService';
 import { severidadeLabel } from '../utils/severidade';
 import { spacing, fontSize } from '../styles/theme';
@@ -21,22 +22,23 @@ interface Props {
  */
 export function ConfirmedDiagnosisCard({ diagnosis, conclusao }: Props) {
   const colors = useThemeColors();
+  const { t } = useTranslation();
 
   return (
     <AppCard>
-      <Text style={[styles.title, { color: colors.primary }]}>Conclusão do veterinário</Text>
+      <Text style={[styles.title, { color: colors.primary }]}>{t('confirmedDiagnosis.title')}</Text>
 
-      <Text style={[styles.label, { color: colors.textSecondary }]}>Diagnóstico</Text>
+      <Text style={[styles.label, { color: colors.textSecondary }]}>{t('confirmedDiagnosis.diagnosis')}</Text>
       <Text style={[styles.value, { color: colors.text }]}>{diagnosis.diagnostico}</Text>
 
-      <Text style={[styles.label, { color: colors.textSecondary }]}>Severidade</Text>
+      <Text style={[styles.label, { color: colors.textSecondary }]}>{t('confirmedDiagnosis.severity')}</Text>
       <Text style={[styles.value, { color: colors.text }]}>
         {severidadeLabel(diagnosis.severidade)}
       </Text>
 
       {conclusao ? (
         <>
-          <Text style={[styles.label, { color: colors.textSecondary }]}>Conclusão clínica</Text>
+          <Text style={[styles.label, { color: colors.textSecondary }]}>{t('confirmedDiagnosis.conclusion')}</Text>
           <Text style={[styles.value, { color: colors.text }]}>{conclusao}</Text>
         </>
       ) : null}

@@ -27,17 +27,22 @@ export function NotificationsScreen() {
 
   const [items, setItems] = useState<AppNotification[]>([]);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [error, setError] = useState('');
 
+  // `/notifications` has no Spring equivalent (confirmed against the backend
+  // controller list — same class of gap as the old /appointments,/animals,
+  // /users routes) and always fails against the real API. This was
+  // previously fire-and-forget inside useFocusEffect, producing an unhandled
+  // promise rejection ("ApiError: Erro interno do servidor") every time this
+  // screen gained focus.
   const load = useCallback(async () => {
     if (!user) return;
-
-    setItems(
-      await getNotificationsByUser(
-        user.id,
-        user.responsavelId,
-        undefined
-      )
-    );
+    setError('');
+    try {
+      setItems(await getNotificationsByUser(user.id, user.responsavelId, undefined));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Não foi possível carregar as notificações.');
+    }
   }, [user]);
 
   useFocusEffect(
@@ -47,14 +52,24 @@ export function NotificationsScreen() {
   );
 
   const handleRead = async (id: string) => {
-    await markNotificationRead(id);
-    load();
+    setError('');
+    try {
+      await markNotificationRead(id);
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Não foi possível marcar como lida.');
+    }
   };
 
   const handleReadAll = async () => {
     if (!user) return;
-    await markAllRead(user.id);
-    load();
+    setError('');
+    try {
+      await markAllRead(user.id);
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Não foi possível marcar todas como lidas.');
+    }
   };
 
   const handleVerify = (notification: AppNotification) => {
@@ -74,6 +89,10 @@ export function NotificationsScreen() {
       <AppHeader title="Notificações" />
 
       <ScreenContainer>
+        {error ? (
+          <Text style={{ color: colors.error, marginBottom: spacing.sm }}>{error}</Text>
+        ) : null}
+
         {items.length > 0 ? (
           <AppButton
             title="Marcar todas como lidas"

@@ -7,7 +7,13 @@ import { EditAnimalScreen } from '../screens/EditAnimalScreen';
 import { AnimalFollowUpScreen } from '../screens/AnimalFollowUpScreen';
 import { NewAppointmentScreen } from '../screens/NewAppointmentScreen';
 import { ConsultaDetailScreen } from '../screens/ConsultaDetailScreen';
+import { ArkiveAnalysisScreen } from '../screens/ArkiveAnalysisScreen';
+import { ArkiveInsightScreen } from '../screens/ArkiveInsightScreen';
+import { VeterinarianConclusionScreen } from '../screens/VeterinarianConclusionScreen';
 import { NewConsultaScreen } from '../screens/NewConsultaScreen';
+import { NewPatientScreen } from '../screens/NewPatientScreen';
+import { PatientDetailScreen } from '../screens/PatientDetailScreen';
+import { EditPatientScreen } from '../screens/EditPatientScreen';
 import { PrescricoesScreen } from '../screens/PrescricoesScreen';
 import { NewPrescricaoScreen } from '../screens/NewPrescricaoScreen';
 import { PrescricaoDetailScreen } from '../screens/PrescricaoDetailScreen';
@@ -39,7 +45,13 @@ export function AppStack() {
       <Stack.Screen name="AcompanhamentoAnimal" component={AnimalFollowUpScreen} />
       <Stack.Screen name="NovaConsulta" component={NewAppointmentScreen} />
       <Stack.Screen name="ConsultaDetalhe" component={ConsultaDetailScreen} />
+      <Stack.Screen name="AnaliseArkive" component={ArkiveAnalysisScreen} />
+      <Stack.Screen name="InsightArkive" component={ArkiveInsightScreen} />
+      <Stack.Screen name="ConclusaoVeterinaria" component={VeterinarianConclusionScreen} />
       <Stack.Screen name="CriarConsulta" component={NewConsultaScreen} />
+      <Stack.Screen name="NovoPaciente" component={NewPatientScreen} />
+      <Stack.Screen name="PacienteDetalhe" component={PatientDetailScreen} />
+      <Stack.Screen name="EditarPaciente" component={EditPatientScreen} />
       <Stack.Screen name="Prescricoes" component={PrescricoesScreen} />
       <Stack.Screen name="NovaPrescricao" component={NewPrescricaoScreen} />
       <Stack.Screen name="PrescricaoDetalhe" component={PrescricaoDetailScreen} />

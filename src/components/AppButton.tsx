@@ -2,10 +2,12 @@ import React from 'react';
 import {
   Pressable,
   Text,
+  View,
   StyleSheet,
   ActivityIndicator,
   ViewStyle,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useThemeColors } from '../hooks/useThemeColors';
 import { spacing, radius, fontSize } from '../styles/theme';
 
@@ -30,6 +32,8 @@ interface Props {
   style?: ViewStyle;
   /** Falls back to `title` — pass this when the visible label alone doesn't fully describe the action (e.g. an icon-only or state-changing control). */
   accessibilityLabel?: string;
+  /** Optional leading icon (Ionicons name) — e.g. a secondary action like "Cadastrar novo paciente". */
+  icon?: React.ComponentProps<typeof Ionicons>['name'];
 }
 
 export function AppButton({
@@ -41,6 +45,7 @@ export function AppButton({
   loading,
   style,
   accessibilityLabel,
+  icon,
 }: Props) {
   const colors = useThemeColors();
   const isSecondary = variant === 'secondary' || variant === 'outline';
@@ -105,15 +110,25 @@ export function AppButton({
       {loading ? (
         <ActivityIndicator color={isSecondary ? colors.primary : current.text} />
       ) : (
-        <Text
-          style={[
-            styles.text,
-            size === 'small' && styles.textSmall,
-            { color: current.text },
-          ]}
-        >
-          {title}
-        </Text>
+        <View style={styles.content}>
+          {icon ? (
+            <Ionicons
+              name={icon}
+              size={size === 'small' ? 16 : 18}
+              color={current.text}
+              style={styles.icon}
+            />
+          ) : null}
+          <Text
+            style={[
+              styles.text,
+              size === 'small' && styles.textSmall,
+              { color: current.text },
+            ]}
+          >
+            {title}
+          </Text>
+        </View>
       )}
     </Pressable>
   );
@@ -134,6 +149,8 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 10,
   },
+  content: { flexDirection: 'row', alignItems: 'center' },
+  icon: { marginRight: spacing.xs },
   text: { fontSize: fontSize.md, fontWeight: '700' },
   textSmall: { fontSize: fontSize.sm },
 });
