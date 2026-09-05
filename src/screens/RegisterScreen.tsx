@@ -26,7 +26,7 @@ export function RegisterScreen() {
 
   return (
     <ScreenContainer scroll edges={['top', 'bottom']}>
-      <View style={styles.hero}>
+      <View style={styles.logoWrap}>
         <Image
           source={require('../assets/branding/definitive.png')}
           style={styles.logo}
@@ -46,8 +46,21 @@ export function RegisterScreen() {
 }
 
 const styles = StyleSheet.create({
-  hero: { alignItems: 'center', marginBottom: spacing.lg },
-  logo: { width: '70%', height: 72 },
+  // Same safe wrapper-owns-aspect-ratio pattern as LoginScreen (see the note
+  // there) — smaller max size here since this is a secondary/informational
+  // screen, not the primary branding moment. A modest, compact mark, roughly
+  // matching this screen's previous ~72px-tall visual footprint.
+  logoWrap: {
+    width: '70%',
+    maxWidth: 90,
+    aspectRatio: 1356 / 1160,
+    alignSelf: 'center',
+    marginBottom: spacing.lg,
+  },
+  logo: {
+    width: '100%',
+    height: '100%',
+  },
   title: { fontSize: fontSize.lg, fontWeight: '700', marginBottom: spacing.sm, textAlign: 'center' },
   message: {
     fontSize: fontSize.md,

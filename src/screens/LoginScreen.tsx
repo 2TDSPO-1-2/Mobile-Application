@@ -78,15 +78,17 @@ export function LoginScreen() {
               shadows.md,
             ]}
           >
-            <Image
-              source={require('../assets/branding/definitive.png')}
-              style={styles.logo}
-              resizeMode="contain"
-              // Forces the logo artwork to pure black regardless of source-asset
-              // shading or theme — the PNG has a real alpha channel, so tintColor
-              // only recolors the glyph itself, never the transparent background.
-              tintColor="#000000"
-            />
+            <View style={styles.logoWrap}>
+              <Image
+                source={require('../assets/branding/definitive.png')}
+                style={styles.logo}
+                resizeMode="contain"
+                // Forces the logo artwork to pure black regardless of source-asset
+                // shading or theme — the PNG has a real alpha channel, so tintColor
+                // only recolors the glyph itself, never the transparent background.
+                tintColor="#000000"
+              />
+            </View>
 
             <AppInput
               label={t('auth.loginLabel')}
@@ -144,7 +146,18 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     padding: spacing.lg,
   },
-  logo: {
+  // The wrapper OWNS the aspect ratio — never the Image itself. On web,
+  // react-native-web injects the source asset's raw intrinsic dimensions
+  // (1356x1160) into the Image's own style before this component's `style`
+  // prop is merged; since that merge only overrides keys we actually set,
+  // an Image style with `aspectRatio` but no explicit `height` leaves the
+  // asset's raw height (1160) in the final computed style, and CSS ignores
+  // aspect-ratio once height is already definite — producing a ~1160px-tall
+  // image and a giant white card (the regression this replaced). Giving the
+  // Image explicit width:100%/height:100% inside a plain View (never an
+  // Image, so it never receives that intrinsic-dimension injection) avoids
+  // the bug entirely.
+  logoWrap: {
     // ~75% of the width of the inputs below it (same card, same padding —
     // the inputs stretch to 100% of that content width) rather than the
     // previous edge-to-edge stretch, with room to breathe on either side.
@@ -155,6 +168,10 @@ const styles = StyleSheet.create({
     aspectRatio: 1356 / 1160,
     alignSelf: 'center',
     marginBottom: spacing.lg,
+  },
+  logo: {
+    width: '100%',
+    height: '100%',
   },
   inputText: { color: '#000000' },
   error: { fontSize: fontSize.sm, textAlign: 'center', marginBottom: spacing.sm },
