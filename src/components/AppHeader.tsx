@@ -35,41 +35,52 @@ export function AppHeader({ title, showBack = true, rightAction }: Props) {
         },
       ]}
     >
-      {showBack ? (
-        <Pressable
-          onPress={() => navigation.goBack()}
-          style={styles.iconBtn}
-          accessibilityRole="button"
-          accessibilityLabel="Voltar"
-        >
-          <Text style={[styles.iconText, { color: colors.primary }]}>←</Text>
-        </Pressable>
-      ) : (
-        <View style={styles.iconBtn} />
-      )}
-      <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>
-        {title}
-      </Text>
-      {rightAction ? (
-        <Pressable onPress={rightAction.onPress} style={styles.iconBtn}>
-          <Text style={[styles.actionText, { color: colors.primary }]}>
-            {rightAction.label}
-          </Text>
-        </Pressable>
-      ) : (
-        <View style={styles.iconBtn} />
-      )}
+      {/* Background/border stay full-bleed; only the content column caps at
+          the same max-width as ScreenContainer so the title visually lines
+          up with the screen body on tablets/web instead of sitting flush
+          left in an otherwise-centered layout. */}
+      <View style={styles.inner}>
+        {showBack ? (
+          <Pressable
+            onPress={() => navigation.goBack()}
+            style={styles.iconBtn}
+            accessibilityRole="button"
+            accessibilityLabel="Voltar"
+          >
+            <Text style={[styles.iconText, { color: colors.primary }]}>←</Text>
+          </Pressable>
+        ) : (
+          <View style={styles.iconBtn} />
+        )}
+        <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>
+          {title}
+        </Text>
+        {rightAction ? (
+          <Pressable onPress={rightAction.onPress} style={styles.iconBtn}>
+            <Text style={[styles.actionText, { color: colors.primary }]}>
+              {rightAction.label}
+            </Text>
+          </Pressable>
+        ) : (
+          <View style={styles.iconBtn} />
+        )}
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.md,
     borderBottomWidth: 1,
+  },
+  inner: {
+    width: '100%',
+    maxWidth: 720,
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   title: {
     flex: 1,

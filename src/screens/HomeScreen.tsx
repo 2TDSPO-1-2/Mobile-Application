@@ -1,17 +1,19 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { HomeHeader } from '../components/HomeHeader';
 import { ScreenContainer } from '../components/ScreenContainer';
-import { SearchBar } from '../components/SearchBar';
 import { AppCard } from '../components/AppCard';
 import { AppButton } from '../components/AppButton';
 import { StatusBadge } from '../components/StatusBadge';
+import { EmptyState } from '../components/EmptyState';
 import { useThemeColors } from '../hooks/useThemeColors';
 import { useConsultas } from '../hooks/useConsultas';
 import { consultaStatusPresentation } from '../utils/statusPresentation';
 import type { AppStackParamList } from '../interfaces/navigation';
+import type { ConsultaDto } from '../services/consultaService';
 import { spacing, fontSize } from '../styles/theme';
 import { commonStyles } from '../styles/common';
 
@@ -31,12 +33,15 @@ function formatHora(iso: string): string {
   return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 }
 
+const IN_PROGRESS_COPY: Record<string, string> = {
+  EP: 'Continuar atendimento',
+  AP: 'Revisar apoio clínico',
+};
+
 export function HomeScreen() {
   const colors = useThemeColors();
   const navigation =
     useNavigation<NativeStackNavigationProp<AppStackParamList>>();
-
-  const [search, setSearch] = useState('');
 
   // GET /api/consultas — same TanStack Query cache ConsultasScreen already
   // populates, scoped server-side to the authenticated veterinarian. This
@@ -52,101 +57,121 @@ export function HomeScreen() {
       .sort((a, b) => a.dataHora.localeCompare(b.dataHora));
   }, [consultas]);
 
+  // "Em andamento": consultations that genuinely need the veterinarian's
+  // attention right now — EP (narrative/AI step) or AP (awaiting the vet's
+  // conclusion) — regardless of date. Deliberately independent of
+  // `todayConsultas`: a same-day EP/AP consultation legitimately appears in
+  // both lists (once as "today's schedule", once as "needs action").
+  const inProgressConsultas = useMemo(() => {
+    if (!consultas) return [];
+    return consultas
+      .filter((c) => c.status === 'EP' || c.status === 'AP')
+      .sort((a, b) => a.dataHora.localeCompare(b.dataHora));
+  }, [consultas]);
+
   // `veterinarioNome` comes straight from ConsultaDto (GET /api/consultas,
-  // already fetched above for "Consultas de hoje") — the real Spring-sourced
-  // display name, confirmed against `ConsultaResponse.veterinarioNome` /
-  // `Veterinario.getNome()`. This deliberately replaces the old
-  // `useAuth().user.name` source: that field is a documented compatibility
-  // shim that just mirrors the login username/email, which is why the
-  // greeting was showing an email instead of a name. Falls back to a
-  // name-free greeting (never the email) when this account has no
-  // consultation yet to read a name from.
+  // already fetched above) — the real Spring-sourced display name, confirmed
+  // against `ConsultaResponse.veterinarioNome` / `Veterinario.getNome()`.
+  // Deliberately replaces the old `useAuth().user.name` source: that field
+  // is a documented compatibility shim mirroring the login username/email.
+  // Falls back to a name-free greeting (never the email) when this account
+  // has no consultation yet to read a name from.
   const veterinarioNome = consultas && consultas.length > 0 ? consultas[0].veterinarioNome : null;
   const greeting = veterinarioNome ? `Olá, Dr. ${veterinarioNome}!` : 'Olá, Doutor(a)!';
 
-  const handleSearch = () => {
-    const term = search.trim();
-    navigation.navigate('Pesquisa', term ? { initialQuery: term } : undefined);
+  const goToConsulta = (consultaId: number) => {
+    navigation.navigate('ConsultaDetalhe', { consultaId });
   };
+
+  const renderConsultaCard = (consulta: ConsultaDto, actionLabel?: string) => (
+    <AppCard key={consulta.id} onPress={() => goToConsulta(consulta.id)} style={styles.consultaCard}>
+      <View style={commonStyles.rowBetween}>
+        <Text style={[styles.patientName, { color: colors.text }]} numberOfLines={1}>
+          {consulta.animalNome}
+        </Text>
+        <StatusBadge
+          label={consulta.statusDescricao}
+          tone={consultaStatusPresentation(consulta.status).tone}
+        />
+      </View>
+
+      {actionLabel ? (
+        <View style={[commonStyles.rowBetween, styles.actionRow]}>
+          <Text style={{ color: colors.primary, fontWeight: '600' }}>{actionLabel}</Text>
+          <Ionicons name="chevron-forward" size={18} color={colors.primary} />
+        </View>
+      ) : (
+        <Text style={{ color: colors.textSecondary }}>
+          {formatHora(consulta.dataHora)}
+          {consulta.modalidade === 'PRESENCIAL' ? ' · Presencial' : ' · Remota'}
+        </Text>
+      )}
+    </AppCard>
+  );
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
       <HomeHeader />
 
       <ScreenContainer style={styles.content}>
-        <SearchBar
-          value={search}
-          onChangeText={setSearch}
-          onSubmit={handleSearch}
-          placeholder="Buscar animais, veterinários ou clínicas..."
-        />
-
-        <Text style={[styles.greeting, { color: colors.text }]}>{greeting}</Text>
-
-        <Text style={[styles.description, { color: colors.textSecondary }]}>
-          Acompanhe suas consultas veterinárias e registros do ArkIve.
+        <Text style={[styles.greeting, { color: colors.text }]} numberOfLines={2}>
+          {greeting}
         </Text>
 
-        <Text style={[commonStyles.eyebrow, { color: colors.primary, marginBottom: spacing.sm }]}>
+        <Text style={[styles.description, { color: colors.textSecondary }]}>
+          Acompanhe seus atendimentos e pacientes no ArkIve.
+        </Text>
+
+        {inProgressConsultas.length > 0 ? (
+          <>
+            <Text style={[commonStyles.eyebrow, { color: colors.primary, marginBottom: spacing.sm }]}>
+              Atendimentos em andamento
+            </Text>
+            {inProgressConsultas.map((consulta) =>
+              renderConsultaCard(consulta, IN_PROGRESS_COPY[consulta.status])
+            )}
+          </>
+        ) : null}
+
+        <Text
+          style={[
+            commonStyles.eyebrow,
+            { color: colors.primary, marginBottom: spacing.sm, marginTop: spacing.md },
+          ]}
+        >
           Consultas de hoje
         </Text>
 
-        <AppCard>
-          {isPending ? (
-            <Text style={{ color: colors.textSecondary }}>Carregando consultas...</Text>
-          ) : isError ? (
-            <Text style={{ color: colors.error }}>Não foi possível carregar suas consultas.</Text>
-          ) : todayConsultas.length === 0 ? (
-            <Text style={{ color: colors.textSecondary }}>
-              Sem consultas marcadas para hoje.
-            </Text>
-          ) : (
-            todayConsultas.map((consulta, index) => (
-              <View
-                key={consulta.id}
-                style={[
-                  styles.todayCard,
-                  index === 0 && styles.todayCardFirst,
-                  { borderColor: colors.border },
-                ]}
-              >
-                <View style={commonStyles.rowBetween}>
-                  <Text style={[styles.todayTitle, { color: colors.text }]}>
-                    {consulta.animalNome}
-                  </Text>
-                  <StatusBadge
-                    label={consulta.statusDescricao}
-                    tone={consultaStatusPresentation(consulta.status).tone}
-                  />
-                </View>
-                <Text style={{ color: colors.textSecondary }}>
-                  {consulta.veterinarioNome} · {formatHora(consulta.dataHora)}
-                </Text>
-              </View>
-            ))
-          )}
-        </AppCard>
+        {isPending ? (
+          <Text style={{ color: colors.textSecondary }}>Carregando consultas...</Text>
+        ) : isError ? (
+          <Text style={{ color: colors.error }}>Não foi possível carregar suas consultas.</Text>
+        ) : todayConsultas.length === 0 ? (
+          <EmptyState title="Sem consultas hoje" message="Nenhuma consulta marcada para hoje." />
+        ) : (
+          todayConsultas.map((consulta) => renderConsultaCard(consulta))
+        )}
 
-        <Text style={[commonStyles.eyebrow, { color: colors.primary, marginBottom: spacing.sm, marginTop: spacing.md }]}>
-          Acesso rápido
+        <Text
+          style={[
+            commonStyles.eyebrow,
+            { color: colors.primary, marginBottom: spacing.sm, marginTop: spacing.md },
+          ]}
+        >
+          Ações
         </Text>
 
         <AppButton
           title="Nova consulta"
-          variant="outline"
+          icon="add"
           onPress={() => navigation.navigate('CriarConsulta')}
         />
 
         <AppButton
-          title="Avaliações de BEA"
+          title="Cadastrar novo paciente"
           variant="outline"
-          onPress={() => navigation.navigate('Avaliacoes')}
-        />
-
-        <AppButton
-          title="Meus feedbacks"
-          variant="outline"
-          onPress={() => navigation.navigate('Feedback', {})}
+          icon="paw-outline"
+          onPress={() => navigation.navigate('NovoPaciente')}
         />
       </ScreenContainer>
     </View>
@@ -166,18 +191,16 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     lineHeight: 20,
   },
-  todayCard: {
-    borderTopWidth: 1,
-    paddingTop: spacing.sm,
-    marginTop: spacing.sm,
+  consultaCard: {
+    marginBottom: spacing.sm,
   },
-  todayCardFirst: {
-    borderTopWidth: 0,
-    paddingTop: 0,
-    marginTop: 0,
-  },
-  todayTitle: {
+  patientName: {
     fontSize: fontSize.md,
     fontWeight: '700',
+    flexShrink: 1,
+    marginRight: spacing.sm,
+  },
+  actionRow: {
+    marginTop: spacing.xs,
   },
 });

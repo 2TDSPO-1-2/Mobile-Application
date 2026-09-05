@@ -6,7 +6,17 @@ export const commonStyles = StyleSheet.create({
   screen: {
     flex: 1,
   },
+  // `commonStyles.content` is only ever consumed by ScreenContainer.tsx
+  // (confirmed — no other file references it), so this is the single,
+  // safe place to establish the app's responsive content strategy: on a
+  // phone (every device in the target matrix tops out at 430px) `maxWidth`
+  // never engages, so there is zero visual change there. It only takes
+  // effect on tablets/web, where content centers instead of stretching
+  // edge-to-edge.
   content: {
+    width: '100%',
+    maxWidth: 720,
+    alignSelf: 'center',
     padding: spacing.md,
     paddingBottom: spacing.xl,
   },
