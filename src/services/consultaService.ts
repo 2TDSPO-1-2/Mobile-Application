@@ -126,6 +126,15 @@ export interface ClinicalSupportResponse {
   severidadeSugerida: string;
   insightClinico: string;
   confianca: number | null;
+  /**
+   * V4 addition — external research sources the clinical engine consulted,
+   * persisted server-side (survives AP/FI/reopen). Optional because a
+   * currently-deployed backend may not have this field yet; every caller
+   * must normalize with `support.fontesPesquisadas ?? []`, never assume
+   * presence. Whether this is empty/populated is entirely the clinical
+   * engine's decision — never derive it from `confianca` on the client.
+   */
+  fontesPesquisadas?: string[];
 }
 
 /** `FinalizarConsultaRequest.java` — the veterinarian's conclusion, confirmed, not called yet. */

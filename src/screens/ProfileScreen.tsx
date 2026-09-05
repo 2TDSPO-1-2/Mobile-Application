@@ -10,6 +10,7 @@ import { EmptyState } from '../components/EmptyState';
 import { useAuth } from '../hooks/useAuth';
 import { useOwnVeterinario } from '../hooks/useVeterinario';
 import { useThemeColors } from '../hooks/useThemeColors';
+import { useTranslation } from '../i18n/useTranslation';
 import type { AppStackParamList } from '../interfaces/navigation';
 import { spacing, fontSize } from '../styles/theme';
 
@@ -25,35 +26,32 @@ export function ProfileScreen() {
   const { logout } = useAuth();
   const { data: veterinario, isPending, isError, veterinarioId } = useOwnVeterinario();
   const colors = useThemeColors();
+  const { t } = useTranslation();
   const navigation =
     useNavigation<NativeStackNavigationProp<AppStackParamList>>();
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
-      <AppHeader title="Perfil" />
+      <AppHeader title={t('profile.title')} />
 
       <ScreenContainer>
         {isPending ? (
           <Text style={{ color: colors.textSecondary, textAlign: 'center', marginBottom: spacing.md }}>
-            Carregando perfil...
+            {t('profile.loading')}
           </Text>
         ) : isError || !veterinario ? (
           <EmptyState
-            title="Não foi possível carregar seu perfil"
-            message={
-              veterinarioId == null
-                ? 'Isso acontece quando esta conta ainda não possui nenhuma consulta registrada.'
-                : 'Verifique a conexão com o servidor e tente novamente.'
-            }
+            title={t('profile.loadErrorTitle')}
+            message={veterinarioId == null ? t('profile.loadErrorNoConsultas') : t('profile.loadErrorGeneric')}
           />
         ) : (
           <AppCard style={styles.profileCard}>
             <Text style={[styles.name, { color: colors.text }]}>{veterinario.nome}</Text>
-            <Text style={[styles.subtitle, { color: colors.primary }]}>Veterinário ArkIve</Text>
+            <Text style={[styles.subtitle, { color: colors.primary }]}>{t('profile.roleLabel')}</Text>
             <Text style={{ color: colors.textSecondary, marginTop: spacing.sm }}>
               {veterinario.email}
             </Text>
-            <Text style={{ color: colors.textSecondary }}>CRMV: {veterinario.crmv}</Text>
+            <Text style={{ color: colors.textSecondary }}>{t('profile.crmvLabel', { value: veterinario.crmv })}</Text>
             {veterinario.especialidade ? (
               <Text style={{ color: colors.textSecondary }}>{veterinario.especialidade}</Text>
             ) : null}
@@ -75,23 +73,22 @@ export function ProfileScreen() {
           rather than pretending a local-only save succeeded on the server.
         */}
         <Text style={{ color: colors.textSecondary, textAlign: 'center', marginBottom: spacing.md }}>
-          A edição de dados cadastrais ainda não está disponível pelo aplicativo. Esses dados são
-          gerenciados pela administração da clínica.
+          {t('profile.editUnavailable')}
         </Text>
 
         <AppButton
-          title="Configurações"
+          title={t('profile.settingsButton')}
           variant="outline"
           onPress={() => navigation.navigate('Configuracoes')}
         />
 
         <AppButton
-          title="Notificações"
+          title={t('profile.notificationsButton')}
           variant="secondary"
           onPress={() => navigation.navigate('Notificacoes')}
         />
 
-        <AppButton title="Sair" variant="danger" onPress={logout} />
+        <AppButton title={t('profile.logoutButton')} variant="danger" onPress={logout} />
       </ScreenContainer>
     </View>
   );

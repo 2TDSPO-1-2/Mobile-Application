@@ -15,6 +15,7 @@ import { useNavigation } from '@react-navigation/native';
 import { AppInput } from '../components/AppInput';
 import { AppButton } from '../components/AppButton';
 import { useAuth } from '../hooks/useAuth';
+import { useTranslation } from '../i18n/useTranslation';
 import { lightColors } from '../styles/colors';
 import type { AuthStackParamList } from '../interfaces/navigation';
 import { spacing, fontSize, radius } from '../styles/theme';
@@ -33,6 +34,7 @@ export function LoginScreen() {
   const navigation =
     useNavigation<NativeStackNavigationProp<AuthStackParamList>>();
   const { login } = useAuth();
+  const { t } = useTranslation();
   const colors = lightColors;
 
   const [identifier, setIdentifier] = useState('');
@@ -46,7 +48,7 @@ export function LoginScreen() {
     const id = identifier.trim();
 
     if (!id || !password) {
-      setError('Preencha usuário e senha.');
+      setError(t('auth.missingFields'));
       return;
     }
 
@@ -87,10 +89,10 @@ export function LoginScreen() {
             />
 
             <AppInput
-              label="Login"
+              label={t('auth.loginLabel')}
               labelColor="#000000"
               style={styles.inputText}
-              placeholder="CRMV ou login do veterinário"
+              placeholder={t('auth.loginPlaceholder')}
               value={identifier}
               onChangeText={setIdentifier}
               autoCapitalize="none"
@@ -98,10 +100,10 @@ export function LoginScreen() {
             />
 
             <AppInput
-              label="Senha"
+              label={t('auth.passwordLabel')}
               labelColor="#000000"
               style={styles.inputText}
-              placeholder="Digite sua senha"
+              placeholder={t('auth.passwordPlaceholder')}
               value={password}
               onChangeText={setPassword}
               secureTextEntry
@@ -111,11 +113,11 @@ export function LoginScreen() {
               <Text style={[styles.error, { color: colors.error }]}>{error}</Text>
             ) : null}
 
-            <AppButton title="Entrar" onPress={handleLogin} loading={loading} />
+            <AppButton title={t('auth.loginButton')} onPress={handleLogin} loading={loading} />
           </View>
 
           <AppButton
-            title="Criar conta"
+            title={t('auth.createAccount')}
             variant="ghost"
             onPress={() => navigation.navigate('Cadastro')}
             style={styles.registerLink}

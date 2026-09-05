@@ -5,6 +5,7 @@ import { AppInput } from './AppInput';
 import { AppButton } from './AppButton';
 import { DateField } from './DateField';
 import { useThemeColors } from '../hooks/useThemeColors';
+import { useTranslation } from '../i18n/useTranslation';
 import type { PrescricaoRequestInput, ViaAdministracao } from '../services/prescricaoService';
 import { VIA_ADMINISTRACAO_OPTIONS, viaAdministracaoLabel } from '../utils/viaAdministracao';
 import { spacing, fontSize, radius } from '../styles/theme';
@@ -69,6 +70,7 @@ export function PrescricaoForm({
   submitLabel,
 }: Props) {
   const colors = useThemeColors();
+  const { t } = useTranslation();
 
   const [medicamento, setMedicamento] = useState(initialValues?.medicamento ?? '');
   const [dosagem, setDosagem] = useState(initialValues?.dosagem ?? '');
@@ -87,15 +89,15 @@ export function PrescricaoForm({
     setValidationError('');
 
     if (!medicamento.trim()) {
-      setValidationError('Informe o medicamento.');
+      setValidationError(t('prescricaoForm.validationNoMedicamento'));
       return;
     }
     if (!dosagem.trim()) {
-      setValidationError('Informe a dosagem.');
+      setValidationError(t('prescricaoForm.validationNoDosagem'));
       return;
     }
     if (!dataInicio) {
-      setValidationError('Informe a data de início do tratamento.');
+      setValidationError(t('prescricaoForm.validationNoDataInicio'));
       return;
     }
 
@@ -103,7 +105,7 @@ export function PrescricaoForm({
     const isoFim = dataFim ? formatIsoDateLocal(dataFim) : undefined;
 
     if (isoFim && isoFim < isoInicio) {
-      setValidationError('A data de término não pode ser anterior à data de início.');
+      setValidationError(t('prescricaoForm.validationDataFimBeforeInicio'));
       return;
     }
 
@@ -126,30 +128,30 @@ export function PrescricaoForm({
       </Text>
 
       <AppInput
-        label="Medicamento"
-        placeholder="Ex.: Amoxicilina com clavulanato"
+        label={t('prescricaoForm.medicamentoLabel')}
+        placeholder={t('prescricaoForm.medicamentoPlaceholder')}
         value={medicamento}
         onChangeText={setMedicamento}
         editable={!isSubmitting}
       />
 
       <AppInput
-        label="Dosagem"
-        placeholder="Ex.: 1 comprimido"
+        label={t('prescricaoForm.dosagemLabel')}
+        placeholder={t('prescricaoForm.dosagemPlaceholder')}
         value={dosagem}
         onChangeText={setDosagem}
         editable={!isSubmitting}
       />
 
       <AppInput
-        label="Frequência"
-        placeholder="Ex.: 12/12h"
+        label={t('prescricaoForm.frequenciaLabel')}
+        placeholder={t('prescricaoForm.frequenciaPlaceholder')}
         value={frequencia}
         onChangeText={setFrequencia}
         editable={!isSubmitting}
       />
 
-      <Text style={[styles.label, { color: colors.text }]}>Via de administração</Text>
+      <Text style={[styles.label, { color: colors.text }]}>{t('prescricaoForm.viaLabel')}</Text>
       <View style={styles.chipRow}>
         {VIA_ADMINISTRACAO_OPTIONS.map((option) => (
           <Pressable
@@ -171,13 +173,13 @@ export function PrescricaoForm({
         ))}
       </View>
 
-      <DateField label="Data de início" value={dataInicio} onChange={setDataInicio} />
+      <DateField label={t('prescricaoForm.dataInicioLabel')} value={dataInicio} onChange={setDataInicio} />
 
-      <DateField label="Data de término (opcional)" value={dataFim} onChange={setDataFim} />
+      <DateField label={t('prescricaoForm.dataFimLabel')} value={dataFim} onChange={setDataFim} />
 
       <AppInput
-        label="Instruções"
-        placeholder="Instruções adicionais para o responsável"
+        label={t('prescricaoForm.instrucoesLabel')}
+        placeholder={t('prescricaoForm.instrucoesPlaceholder')}
         value={instrucoes}
         onChangeText={setInstrucoes}
         editable={!isSubmitting}
@@ -191,7 +193,7 @@ export function PrescricaoForm({
       ) : null}
 
       <AppButton
-        title={isSubmitting ? 'Salvando...' : submitLabel}
+        title={isSubmitting ? t('prescricaoForm.submitting') : submitLabel}
         onPress={handleSubmit}
         loading={isSubmitting}
         disabled={isSubmitting}

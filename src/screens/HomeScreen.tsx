@@ -10,8 +10,10 @@ import { AppButton } from '../components/AppButton';
 import { StatusBadge } from '../components/StatusBadge';
 import { EmptyState } from '../components/EmptyState';
 import { useThemeColors } from '../hooks/useThemeColors';
+import { useTranslation } from '../i18n/useTranslation';
 import { useConsultas } from '../hooks/useConsultas';
 import { consultaStatusPresentation } from '../utils/statusPresentation';
+import { formatTime } from '../utils/localeFormat';
 import type { AppStackParamList } from '../interfaces/navigation';
 import type { ConsultaDto } from '../services/consultaService';
 import { spacing, fontSize } from '../styles/theme';
@@ -30,18 +32,19 @@ function isSameDayAsNow(iso: string): boolean {
 function formatHora(iso: string): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return '';
-  return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  return formatTime(date);
 }
-
-const IN_PROGRESS_COPY: Record<string, string> = {
-  EP: 'Continuar atendimento',
-  AP: 'Revisar apoio clínico',
-};
 
 export function HomeScreen() {
   const colors = useThemeColors();
+  const { t } = useTranslation();
   const navigation =
     useNavigation<NativeStackNavigationProp<AppStackParamList>>();
+
+  const IN_PROGRESS_COPY: Record<string, string> = {
+    EP: t('home.continueAttendance'),
+    AP: t('home.reviewSupport'),
+  };
 
   // GET /api/consultas — same TanStack Query cache ConsultasScreen already
   // populates, scoped server-side to the authenticated veterinarian. This
@@ -77,7 +80,9 @@ export function HomeScreen() {
   // Falls back to a name-free greeting (never the email) when this account
   // has no consultation yet to read a name from.
   const veterinarioNome = consultas && consultas.length > 0 ? consultas[0].veterinarioNome : null;
-  const greeting = veterinarioNome ? `Olá, Dr. ${veterinarioNome}!` : 'Olá, Doutor(a)!';
+  const greeting = veterinarioNome
+    ? t('home.greetingWithName', { name: veterinarioNome })
+    : t('home.greetingFallback');
 
   const goToConsulta = (consultaId: number) => {
     navigation.navigate('ConsultaDetalhe', { consultaId });
@@ -103,7 +108,8 @@ export function HomeScreen() {
       ) : (
         <Text style={{ color: colors.textSecondary }}>
           {formatHora(consulta.dataHora)}
-          {consulta.modalidade === 'PRESENCIAL' ? ' · Presencial' : ' · Remota'}
+          {' · '}
+          {consulta.modalidade === 'PRESENCIAL' ? t('home.presencial') : t('home.remota')}
         </Text>
       )}
     </AppCard>
@@ -119,13 +125,13 @@ export function HomeScreen() {
         </Text>
 
         <Text style={[styles.description, { color: colors.textSecondary }]}>
-          Acompanhe seus atendimentos e pacientes no ArkIve.
+          {t('home.description')}
         </Text>
 
         {inProgressConsultas.length > 0 ? (
           <>
             <Text style={[commonStyles.eyebrow, { color: colors.primary, marginBottom: spacing.sm }]}>
-              Atendimentos em andamento
+              {t('home.inProgressSection')}
             </Text>
             {inProgressConsultas.map((consulta) =>
               renderConsultaCard(consulta, IN_PROGRESS_COPY[consulta.status])
@@ -139,15 +145,15 @@ export function HomeScreen() {
             { color: colors.primary, marginBottom: spacing.sm, marginTop: spacing.md },
           ]}
         >
-          Consultas de hoje
+          {t('home.todaySection')}
         </Text>
 
         {isPending ? (
-          <Text style={{ color: colors.textSecondary }}>Carregando consultas...</Text>
+          <Text style={{ color: colors.textSecondary }}>{t('home.loadingConsultas')}</Text>
         ) : isError ? (
-          <Text style={{ color: colors.error }}>Não foi possível carregar suas consultas.</Text>
+          <Text style={{ color: colors.error }}>{t('home.loadError')}</Text>
         ) : todayConsultas.length === 0 ? (
-          <EmptyState title="Sem consultas hoje" message="Nenhuma consulta marcada para hoje." />
+          <EmptyState title={t('home.emptyTodayTitle')} message={t('home.emptyTodayMessage')} />
         ) : (
           todayConsultas.map((consulta) => renderConsultaCard(consulta))
         )}
@@ -158,17 +164,17 @@ export function HomeScreen() {
             { color: colors.primary, marginBottom: spacing.sm, marginTop: spacing.md },
           ]}
         >
-          Ações
+          {t('home.actionsSection')}
         </Text>
 
         <AppButton
-          title="Nova consulta"
+          title={t('home.newConsulta')}
           icon="add"
           onPress={() => navigation.navigate('CriarConsulta')}
         />
 
         <AppButton
-          title="Cadastrar novo paciente"
+          title={t('home.registerPatient')}
           variant="outline"
           icon="paw-outline"
           onPress={() => navigation.navigate('NovoPaciente')}

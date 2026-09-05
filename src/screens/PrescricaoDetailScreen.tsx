@@ -8,6 +8,7 @@ import { AppCard } from '../components/AppCard';
 import { AppButton } from '../components/AppButton';
 import { EmptyState } from '../components/EmptyState';
 import { useThemeColors } from '../hooks/useThemeColors';
+import { useTranslation } from '../i18n/useTranslation';
 import { usePrescricao, useDeletePrescricao } from '../hooks/usePrescricoes';
 import { viaAdministracaoLabel } from '../utils/viaAdministracao';
 import { toDisplayDate } from '../utils/isoDate';
@@ -19,6 +20,7 @@ export function PrescricaoDetailScreen() {
   const route = useRoute<RouteProp<AppStackParamList, 'PrescricaoDetalhe'>>();
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
   const colors = useThemeColors();
+  const { t } = useTranslation();
   const { prescricaoId, consultaId } = route.params;
 
   const { data: prescricao, isPending, isError, error, refetch } = usePrescricao(
@@ -29,10 +31,10 @@ export function PrescricaoDetailScreen() {
   const [actionError, setActionError] = useState('');
 
   const handleDelete = () => {
-    Alert.alert('Excluir prescrição', 'Esta ação não poderá ser desfeita.', [
-      { text: 'Cancelar', style: 'cancel' },
+    Alert.alert(t('prescricaoDetail.deleteConfirmTitle'), t('prescricaoDetail.deleteConfirmMessage'), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Excluir',
+        text: t('common.delete'),
         style: 'destructive',
         onPress: async () => {
           setActionError('');
@@ -50,9 +52,9 @@ export function PrescricaoDetailScreen() {
   if (isPending) {
     return (
       <View style={[styles.root, { backgroundColor: colors.background }]}>
-        <AppHeader title="Prescrição" />
+        <AppHeader title={t('prescricaoDetail.title')} />
         <Text style={{ color: colors.textSecondary, textAlign: 'center', marginTop: spacing.xl }}>
-          Carregando prescrição...
+          {t('prescricaoDetail.loading')}
         </Text>
       </View>
     );
@@ -61,13 +63,13 @@ export function PrescricaoDetailScreen() {
   if (isError || !prescricao) {
     return (
       <View style={[styles.root, { backgroundColor: colors.background }]}>
-        <AppHeader title="Prescrição" />
+        <AppHeader title={t('prescricaoDetail.title')} />
         <ScreenContainer>
           <EmptyState
-            title="Não foi possível carregar"
-            message={error instanceof Error ? error.message : 'Prescrição não encontrada.'}
+            title={t('prescricaoDetail.loadErrorTitle')}
+            message={error instanceof Error ? error.message : t('prescricaoDetail.notFound')}
           />
-          <AppButton title="Tentar novamente" variant="outline" onPress={() => refetch()} />
+          <AppButton title={t('common.tryAgain')} variant="outline" onPress={() => refetch()} />
         </ScreenContainer>
       </View>
     );
@@ -75,26 +77,30 @@ export function PrescricaoDetailScreen() {
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
-      <AppHeader title="Prescrição" />
+      <AppHeader title={t('prescricaoDetail.title')} />
       <ScreenContainer>
         <AppCard>
           <Text style={[styles.title, { color: colors.text }]}>{prescricao.medicamento}</Text>
-          <Text style={[styles.field, { color: colors.text }]}>Dosagem: {prescricao.dosagem}</Text>
+          <Text style={[styles.field, { color: colors.text }]}>
+            {t('prescricaoDetail.dosageLabel', { value: prescricao.dosagem })}
+          </Text>
           {prescricao.frequencia ? (
             <Text style={[styles.field, { color: colors.textSecondary }]}>
-              Frequência: {prescricao.frequencia}
+              {t('prescricaoDetail.frequencyLabel', { value: prescricao.frequencia })}
             </Text>
           ) : null}
           <Text style={[styles.field, { color: colors.textSecondary }]}>
-            Via de administração: {viaAdministracaoLabel(prescricao.viaAdministracao)}
+            {t('prescricaoDetail.routeLabel', { value: viaAdministracaoLabel(prescricao.viaAdministracao) })}
           </Text>
           <Text style={[styles.field, { color: colors.textSecondary }]}>
-            Início: {toDisplayDate(prescricao.dataInicio)}
-            {prescricao.dataFim ? ` · Término: ${toDisplayDate(prescricao.dataFim)}` : ''}
+            {t('prescricaoDetail.startLabel', { value: toDisplayDate(prescricao.dataInicio) })}
+            {prescricao.dataFim
+              ? t('prescricaoDetail.endLabel', { value: toDisplayDate(prescricao.dataFim) })
+              : ''}
           </Text>
           {prescricao.instrucoes ? (
             <Text style={[styles.field, { color: colors.text }]}>
-              Instruções: {prescricao.instrucoes}
+              {t('prescricaoDetail.instructionsLabel', { value: prescricao.instrucoes })}
             </Text>
           ) : null}
         </AppCard>
@@ -104,13 +110,13 @@ export function PrescricaoDetailScreen() {
         ) : null}
 
         <AppButton
-          title="Editar"
+          title={t('prescricaoDetail.editButton')}
           variant="outline"
           onPress={() => navigation.navigate('EditarPrescricao', { prescricaoId, consultaId })}
         />
 
         <AppButton
-          title="Excluir"
+          title={t('prescricaoDetail.deleteButton')}
           variant="danger"
           onPress={handleDelete}
           loading={deleteMutation.isPending}

@@ -5,6 +5,7 @@ import { AppHeader } from '../components/AppHeader';
 import { ScreenContainer } from '../components/ScreenContainer';
 import { PrescricaoForm } from '../components/PrescricaoForm';
 import { useThemeColors } from '../hooks/useThemeColors';
+import { useTranslation } from '../i18n/useTranslation';
 import { useConsulta } from '../hooks/useConsultas';
 import { usePrescricao, useUpdatePrescricao } from '../hooks/usePrescricoes';
 import { describePrescricaoError } from '../utils/errorMessages';
@@ -22,6 +23,7 @@ export function EditPrescricaoScreen() {
   const route = useRoute<RouteProp<AppStackParamList, 'EditarPrescricao'>>();
   const navigation = useNavigation();
   const colors = useThemeColors();
+  const { t } = useTranslation();
   const { prescricaoId, consultaId } = route.params;
 
   const { data: prescricao, isPending } = usePrescricao(prescricaoId, consultaId);
@@ -40,9 +42,9 @@ export function EditPrescricaoScreen() {
   if (isPending || !prescricao) {
     return (
       <View style={{ flex: 1, backgroundColor: colors.background }}>
-        <AppHeader title="Editar Prescrição" />
+        <AppHeader title={t('prescricaoForm.editTitle')} />
         <Text style={{ color: colors.textSecondary, textAlign: 'center', marginTop: spacing.xl }}>
-          Carregando prescrição...
+          {t('prescricaoForm.loadingPrescricao')}
         </Text>
       </View>
     );
@@ -50,7 +52,7 @@ export function EditPrescricaoScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <AppHeader title="Editar Prescrição" />
+      <AppHeader title={t('prescricaoForm.editTitle')} />
       <ScreenContainer>
         <PrescricaoForm
           patientName={consulta?.animalNome ?? ''}
@@ -69,7 +71,7 @@ export function EditPrescricaoScreen() {
           errorMessage={
             updateMutation.isError ? describePrescricaoError(updateMutation.error) : undefined
           }
-          submitLabel="Salvar alterações"
+          submitLabel={t('prescricaoForm.editSubmit')}
         />
       </ScreenContainer>
     </View>

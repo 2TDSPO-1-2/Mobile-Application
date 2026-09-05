@@ -4,19 +4,10 @@ import { AppInput } from './AppInput';
 import { AppButton } from './AppButton';
 import { ChipGroup } from './ChipGroup';
 import { useThemeColors } from '../hooks/useThemeColors';
+import { useTranslation } from '../i18n/useTranslation';
 import { useEspecies, useRacas } from '../hooks/useLookups';
 import type { AnimalRequestInput } from '../services/patientService';
 import { spacing, fontSize } from '../styles/theme';
-
-const SEXO_OPTIONS = [
-  { value: 'M', label: 'Macho' },
-  { value: 'F', label: 'Fêmea' },
-];
-
-const CASTRADO_OPTIONS = [
-  { value: 'S', label: 'Sim' },
-  { value: 'N', label: 'Não' },
-];
 
 export interface PatientFormValues {
   nome: string;
@@ -53,6 +44,17 @@ export function PatientForm({
   onNameChange,
 }: Props) {
   const colors = useThemeColors();
+  const { t } = useTranslation();
+
+  const SEXO_OPTIONS = [
+    { value: 'M', label: t('common.male') },
+    { value: 'F', label: t('common.female') },
+  ];
+
+  const CASTRADO_OPTIONS = [
+    { value: 'S', label: t('common.yes') },
+    { value: 'N', label: t('common.no') },
+  ];
 
   const [nome, setNomeState] = useState(initialValues?.nome ?? '');
   const setNome = (value: string) => {
@@ -97,11 +99,11 @@ export function PatientForm({
     setValidationError('');
 
     if (!nome.trim()) {
-      setValidationError('Informe o nome do paciente.');
+      setValidationError(t('patientForm.validationNoName'));
       return;
     }
     if (!especieId) {
-      setValidationError('Selecione a espécie do paciente.');
+      setValidationError(t('patientForm.validationNoSpecies'));
       return;
     }
 
@@ -116,7 +118,12 @@ export function PatientForm({
 
   return (
     <View>
-      <AppInput label="Nome" placeholder="Nome do paciente" value={nome} onChangeText={setNome} />
+      <AppInput
+        label={t('patientForm.nameLabel')}
+        placeholder={t('patientForm.namePlaceholder')}
+        value={nome}
+        onChangeText={setNome}
+      />
       {duplicateWarning ? (
         <Text style={{ color: colors.warning, fontSize: fontSize.sm, marginTop: -spacing.sm, marginBottom: spacing.sm }}>
           {duplicateWarning}
@@ -124,32 +131,32 @@ export function PatientForm({
       ) : null}
 
       <ChipGroup
-        label="Espécie"
+        label={t('patientForm.speciesLabel')}
         options={especieOptions}
         value={especieId != null ? String(especieId) : null}
         onChange={handleEspecieChange}
-        emptyMessage={especiesLoading ? 'Carregando espécies...' : 'Nenhuma espécie disponível.'}
+        emptyMessage={especiesLoading ? t('patientForm.loadingSpecies') : t('patientForm.noSpecies')}
       />
 
       <ChipGroup
-        label="Raça"
+        label={t('patientForm.breedLabel')}
         options={racaOptions}
         value={racaId != null ? String(racaId) : null}
         onChange={(value) => setRacaId(Number(value))}
         disabled={!especieId}
         emptyMessage={
           !especieId
-            ? 'Selecione a espécie primeiro.'
+            ? t('patientForm.selectSpeciesFirst')
             : racasLoading
-              ? 'Carregando raças...'
-              : 'Nenhuma raça cadastrada para esta espécie.'
+              ? t('patientForm.loadingBreeds')
+              : t('patientForm.noBreeds')
         }
       />
 
-      <ChipGroup label="Sexo" options={SEXO_OPTIONS} value={sexo} onChange={(v) => setSexo(v as 'M' | 'F')} />
+      <ChipGroup label={t('patientForm.sexLabel')} options={SEXO_OPTIONS} value={sexo} onChange={(v) => setSexo(v as 'M' | 'F')} />
 
       <ChipGroup
-        label="Castrado"
+        label={t('patientForm.neuteredLabel')}
         options={CASTRADO_OPTIONS}
         value={castrado}
         onChange={(v) => setCastrado(v as 'S' | 'N')}

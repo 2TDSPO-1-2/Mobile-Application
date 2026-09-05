@@ -8,6 +8,7 @@ import { AppCard } from '../components/AppCard';
 import { StatusBadge } from '../components/StatusBadge';
 import { EmptyState } from '../components/EmptyState';
 import { useThemeColors } from '../hooks/useThemeColors';
+import { useTranslation } from '../i18n/useTranslation';
 import { useConsultas } from '../hooks/useConsultas';
 import { consultaStatusPresentation } from '../utils/statusPresentation';
 import { commonStyles } from '../styles/common';
@@ -21,6 +22,7 @@ import { spacing, fontSize } from '../styles/theme';
  */
 export function ConsultasScreen() {
   const colors = useThemeColors();
+  const { t } = useTranslation();
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
   const { data, isPending, isError, error, refetch, isRefetching } = useConsultas();
 
@@ -29,16 +31,16 @@ export function ConsultasScreen() {
       <HomeHeader />
 
       <ScreenContainer>
-        <Text style={[styles.pageTitle, { color: colors.text }]}>Consultas</Text>
+        <Text style={[styles.pageTitle, { color: colors.text }]}>{t('consultasList.title')}</Text>
 
         {isPending ? (
           <Text style={{ color: colors.textSecondary, textAlign: 'center' }}>
-            Carregando consultas...
+            {t('consultasList.loading')}
           </Text>
         ) : isError ? (
           <EmptyState
-            title="Não foi possível carregar"
-            message={error instanceof Error ? error.message : 'Erro ao consultar o servidor.'}
+            title={t('consultasList.loadErrorTitle')}
+            message={error instanceof Error ? error.message : t('consultasList.genericServerError')}
           />
         ) : data && data.length > 0 ? (
           data
@@ -66,10 +68,7 @@ export function ConsultasScreen() {
               </AppCard>
             ))
         ) : (
-          <EmptyState
-            title="Nenhuma consulta"
-            message="A API não retornou nenhuma consulta para este usuário."
-          />
+          <EmptyState title={t('consultasList.emptyTitle')} message={t('consultasList.emptyMessage')} />
         )}
 
         <Pressable
@@ -83,7 +82,7 @@ export function ConsultasScreen() {
       {!isPending && !isError ? (
         <Pressable style={styles.refreshHint} onPress={() => refetch()} disabled={isRefetching}>
           <Text style={{ color: colors.primary, fontSize: fontSize.xs }}>
-            {isRefetching ? 'Atualizando...' : 'Atualizar lista'}
+            {isRefetching ? t('consultasList.refreshing') : t('consultasList.refresh')}
           </Text>
         </Pressable>
       ) : null}

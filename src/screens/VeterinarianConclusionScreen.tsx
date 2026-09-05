@@ -7,6 +7,7 @@ import { AppHeader } from '../components/AppHeader';
 import { ScreenContainer } from '../components/ScreenContainer';
 import { VeterinarianConclusionForm } from '../components/VeterinarianConclusionForm';
 import { useThemeColors } from '../hooks/useThemeColors';
+import { useTranslation } from '../i18n/useTranslation';
 import { useFinalizeConsulta } from '../hooks/useConsultas';
 import { getConsulta } from '../services/consultaService';
 import { isTransientInfraError } from '../services/apiClient';
@@ -28,6 +29,7 @@ export function VeterinarianConclusionScreen() {
   const route = useRoute<RouteProp<AppStackParamList, 'ConclusaoVeterinaria'>>();
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
   const colors = useThemeColors();
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { consultaId } = route.params;
 
@@ -75,7 +77,7 @@ export function VeterinarianConclusionScreen() {
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
-      <AppHeader title="Conclusão do veterinário" />
+      <AppHeader title={t('conclusion.title')} />
       <ScreenContainer style={styles.content}>
         <VeterinarianConclusionForm
           onSubmit={handleSubmit}

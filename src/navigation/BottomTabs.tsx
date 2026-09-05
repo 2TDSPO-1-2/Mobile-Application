@@ -8,6 +8,7 @@ import { HomeScreen } from '../screens/HomeScreen';
 import { ConsultasScreen } from '../screens/ConsultasScreen';
 import { PatientsScreen } from '../screens/PatientsScreen';
 import { useThemeColors } from '../hooks/useThemeColors';
+import { useTranslation } from '../i18n/useTranslation';
 import { fontSize, spacing } from '../styles/theme';
 
 const Tab = createBottomTabNavigator<BottomTabParamList>();
@@ -111,6 +112,7 @@ function CustomTabBar({ state, descriptors, navigation, insets }: BottomTabBarPr
  * the real, Spring-backed replacements.
  */
 export function BottomTabs() {
+  const { t } = useTranslation();
   return (
     <Tab.Navigator
       tabBar={(props) => <CustomTabBar {...props} />}
@@ -119,9 +121,9 @@ export function BottomTabs() {
         tabBarHideOnKeyboard: true,
       }}
     >
-      <Tab.Screen name="Home" component={HomeScreen} options={{ tabBarLabel: 'Início' }} />
-      <Tab.Screen name="Consultas" component={ConsultasScreen} options={{ tabBarLabel: 'Consultas' }} />
-      <Tab.Screen name="Pacientes" component={PatientsScreen} options={{ tabBarLabel: 'Pacientes' }} />
+      <Tab.Screen name="Home" component={HomeScreen} options={{ tabBarLabel: t('nav.home') }} />
+      <Tab.Screen name="Consultas" component={ConsultasScreen} options={{ tabBarLabel: t('nav.consultas') }} />
+      <Tab.Screen name="Pacientes" component={PatientsScreen} options={{ tabBarLabel: t('nav.pacientes') }} />
     </Tab.Navigator>
   );
 }

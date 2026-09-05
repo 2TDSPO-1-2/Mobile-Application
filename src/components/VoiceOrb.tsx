@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef } from 'react';
 import { View, Text, Pressable, Animated, ActivityIndicator, StyleSheet, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeColors } from '../hooks/useThemeColors';
+import { useTranslation } from '../i18n/useTranslation';
 import { spacing, fontSize } from '../styles/theme';
 
 export type VoiceOrbMode = 'idle' | 'recording' | 'transcribing' | 'analyzing';
@@ -53,6 +54,7 @@ function useOrbSizes() {
  */
 export function VoiceOrb({ mode, durationSeconds = 0, meteringLevel = 0, onPress, disabled }: Props) {
   const colors = useThemeColors();
+  const { t } = useTranslation();
   const { orb: ORB_SIZE, ringOuter: RING_OUTER, ringInner: RING_INNER } = useOrbSizes();
 
   const ring1 = useRef(new Animated.Value(0)).current;
@@ -122,14 +124,15 @@ export function VoiceOrb({ mode, durationSeconds = 0, meteringLevel = 0, onPress
 
   const label =
     mode === 'recording'
-      ? 'Gravando'
+      ? t('voiceOrb.recording')
       : mode === 'transcribing'
-        ? 'Transformando sua fala em relato clínico...'
+        ? t('voiceOrb.transcribing')
         : mode === 'idle'
-          ? 'Toque para gravar'
+          ? t('voiceOrb.idle')
           : null;
 
-  const accessibilityLabel = mode === 'recording' ? 'Parar gravação' : 'Iniciar gravação do relato clínico';
+  const accessibilityLabel =
+    mode === 'recording' ? t('voiceOrb.stopAccessibilityLabel') : t('voiceOrb.startAccessibilityLabel');
   const interactive = (mode === 'idle' || mode === 'recording') && !disabled;
 
   return (

@@ -4,10 +4,8 @@ import { AppInput } from './AppInput';
 import { AppButton } from './AppButton';
 import { VoiceOrb } from './VoiceOrb';
 import { useThemeColors } from '../hooks/useThemeColors';
+import { useTranslation } from '../i18n/useTranslation';
 import { useClinicalVoiceRecording } from '../hooks/useClinicalVoiceRecording';
-import { getJson } from '../storage/base';
-import { STORAGE_KEYS } from '../storage/keys';
-import type { IdiomaTranscricao } from '../services/transcricaoService';
 import { spacing, fontSize } from '../styles/theme';
 import { commonStyles } from '../styles/common';
 
@@ -48,20 +46,18 @@ export function ClinicalIntake({
   analyzing,
 }: Props) {
   const colors = useThemeColors();
+  const { t, language } = useTranslation();
   // Initial value only — a background refetch changing the underlying
   // consulta doesn't remount this component (same consultaId, same EP
   // status), so this never gets silently overwritten while the
   // veterinarian is mid-edit.
   const [draft, setDraft] = useState(initialNarrativa);
   const [view, setView] = useState<'orb' | 'editor'>(initialNarrativa.trim() ? 'editor' : 'orb');
-  const [locale, setLocale] = useState<IdiomaTranscricao>('pt-BR');
   const [analyzeError, setAnalyzeError] = useState('');
 
-  // Reused veterinarian preference from Settings — no language control
-  // inside the consultation itself anymore.
-  useEffect(() => {
-    getJson<IdiomaTranscricao>(STORAGE_KEYS.voiceLocale, 'pt-BR').then(setLocale);
-  }, []);
+  // The app-wide language IS the voice-dictation locale — one setting, no
+  // separate read from Settings needed here anymore (see src/i18n/store.ts).
+  const locale = language;
 
   const voice = useClinicalVoiceRecording((transcript) => {
     setDraft((current) => appendSegment(current, transcript));
@@ -81,13 +77,13 @@ export function ClinicalIntake({
   const handleAnalyzePress = async () => {
     setAnalyzeError('');
     if (!draft.trim()) {
-      setAnalyzeError('Descreva o que aconteceu antes de analisar com a ArkIve.');
+      setAnalyzeError(t('clinicalIntake.validationEmpty'));
       return;
     }
     try {
       await onAnalyze(draft);
     } catch (err) {
-      setAnalyzeError(err instanceof Error ? err.message : 'Não foi possível salvar o relato.');
+      setAnalyzeError(err instanceof Error ? err.message : t('clinicalIntake.saveFallbackError'));
     }
   };
 
@@ -102,14 +98,14 @@ export function ClinicalIntake({
         {contextLine}
       </Text>
       {motivo ? (
-        <Text style={{ color: colors.textSecondary, marginBottom: spacing.md }}>Motivo: {motivo}</Text>
+        <Text style={{ color: colors.textSecondary, marginBottom: spacing.md }}>
+          {t('consultaDetail.reasonLabel', { reason: motivo })}
+        </Text>
       ) : null}
 
-      <Text style={[styles.question, { color: colors.text }]}>O que aconteceu com {animalNome}?</Text>
+      <Text style={[styles.question, { color: colors.text }]}>{t('clinicalIntake.question', { name: animalNome })}</Text>
       {showOrbArea ? (
-        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-          Relate o que você observou durante a avaliação.
-        </Text>
+        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>{t('clinicalIntake.subtitle')}</Text>
       ) : null}
 
       {showOrbArea ? (
@@ -129,7 +125,7 @@ export function ClinicalIntake({
 
           {voice.status === 'idle' ? (
             <Pressable onPress={() => setView('editor')} style={styles.linkWrap} accessibilityRole="button">
-              <Text style={{ color: colors.primary, fontWeight: '600' }}>Digitar relato</Text>
+              <Text style={{ color: colors.primary, fontWeight: '600' }}>{t('clinicalIntake.typeNarrative')}</Text>
             </Pressable>
           ) : null}
 
@@ -138,12 +134,11 @@ export function ClinicalIntake({
               <Text style={{ color: colors.error, textAlign: 'center' }}>{voice.errorMessage}</Text>
               {voice.permanentlyDenied ? (
                 <Text style={{ color: colors.textSecondary, textAlign: 'center', marginTop: spacing.xs }}>
-                  Ative a permissão de microfone nas configurações do sistema para usar o ditado. O
-                  relato continua disponível pelo teclado.
+                  {t('clinicalIntake.micPermissionDenied')}
                 </Text>
               ) : voice.canRetry ? (
                 <AppButton
-                  title="Tentar transcrever novamente"
+                  title={t('clinicalIntake.retryTranscription')}
                   variant="outline"
                   onPress={() => voice.retry(locale)}
                 />
@@ -154,10 +149,10 @@ export function ClinicalIntake({
       ) : (
         <>
           <Text style={[commonStyles.eyebrow, { color: colors.primary, marginBottom: spacing.sm }]}>
-            Relato clínico
+            {t('clinicalIntake.sectionLabel')}
           </Text>
           <AppInput
-            placeholder="Descreva o exame clínico, sintomas observados e evolução do caso."
+            placeholder={t('clinicalIntake.narrativePlaceholder')}
             value={draft}
             onChangeText={setDraft}
             editable={!analyzing}
@@ -165,12 +160,10 @@ export function ClinicalIntake({
             numberOfLines={10}
             style={styles.editor}
           />
-          <Text style={[styles.disclaimer, { color: colors.textSecondary }]}>
-            Revise antes da análise.
-          </Text>
+          <Text style={[styles.disclaimer, { color: colors.textSecondary }]}>{t('clinicalIntake.disclaimer')}</Text>
 
           <AppButton
-            title="Adicionar ao relato"
+            title={t('clinicalIntake.addToNarrative')}
             variant="ghost"
             icon="mic-outline"
             onPress={() => setView('orb')}
@@ -187,7 +180,7 @@ export function ClinicalIntake({
 
       {view === 'editor' && voice.status === 'idle' ? (
         <AppButton
-          title="Analisar com ArkIve"
+          title={t('clinicalIntake.analyzeButton')}
           icon="sparkles"
           onPress={handleAnalyzePress}
           loading={analyzing}

@@ -6,6 +6,7 @@ import { AppHeader } from '../components/AppHeader';
 import { ScreenContainer } from '../components/ScreenContainer';
 import { PatientForm } from '../components/PatientForm';
 import { useThemeColors } from '../hooks/useThemeColors';
+import { useTranslation } from '../i18n/useTranslation';
 import { useCreatePatient, useClinicPatients } from '../hooks/usePatients';
 import { describePatientError } from '../utils/errorMessages';
 import type { AnimalRequestInput } from '../services/patientService';
@@ -25,6 +26,7 @@ function normalize(value: string): string {
 export function NewPatientScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
   const colors = useThemeColors();
+  const { t } = useTranslation();
   const createMutation = useCreatePatient();
   const { data: clinicPatients } = useClinicPatients();
 
@@ -34,7 +36,7 @@ export function NewPatientScreen() {
   const duplicateWarning =
     nome.trim().length > 1 &&
     clinicPatients?.some((animal) => normalize(animal.nome) === normalize(nome))
-      ? 'Já existe um paciente com nome semelhante nesta clínica.'
+      ? t('patientForm.duplicateWarning')
       : undefined;
 
   const handleSubmit = async (payload: AnimalRequestInput) => {
@@ -49,13 +51,13 @@ export function NewPatientScreen() {
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
-      <AppHeader title="Novo Paciente" />
+      <AppHeader title={t('patientForm.newTitle')} />
       <ScreenContainer>
         <PatientForm
           onNameChange={setNome}
           onSubmit={handleSubmit}
           submitting={createMutation.isPending}
-          submitLabel="Cadastrar paciente"
+          submitLabel={t('patientForm.createSubmit')}
           errorMessage={error}
           duplicateWarning={duplicateWarning}
         />

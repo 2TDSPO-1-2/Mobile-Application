@@ -1,46 +1,39 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { View, Text, Pressable, Switch, StyleSheet } from 'react-native';
 import { AppHeader } from '../components/AppHeader';
 import { ScreenContainer } from '../components/ScreenContainer';
 import { useTheme } from '../context/ThemeContext';
 import { useThemeColors } from '../hooks/useThemeColors';
-import { getJson, setJson } from '../storage/base';
-import { STORAGE_KEYS } from '../storage/keys';
-import type { IdiomaTranscricao } from '../services/transcricaoService';
+import { useTranslation } from '../i18n/useTranslation';
+import type { Language } from '../i18n/store';
 import { spacing, fontSize, radius } from '../styles/theme';
 
-const LOCALE_OPTIONS: { value: IdiomaTranscricao; label: string }[] = [
+const LANGUAGE_OPTIONS: { value: Language; label: string }[] = [
   { value: 'pt-BR', label: 'Português (Brasil)' },
   { value: 'en-US', label: 'English (US)' },
 ];
 
+/**
+ * This is an app-wide language setting, not merely a voice-dictation
+ * preference — changing it here retranslates the entire UI immediately
+ * (via `useTranslation`/`I18nContext`) AND still drives the transcription
+ * locale sent to the backend, since both are deliberately the same stored
+ * value (see `src/i18n/store.ts`).
+ */
 export function SettingsScreen() {
   const { mode, preferences, setMode, updatePreferences } = useTheme();
   const colors = useThemeColors();
+  const { t, language, setLanguage } = useTranslation();
   const rowStyle = [styles.row, { borderBottomColor: colors.border }];
-
-  // This is a veterinarian preference, not consultation data — the exact
-  // same STORAGE_KEYS.voiceLocale the recording flow already reads, just no
-  // longer surfaced inside the consultation itself.
-  const [voiceLocale, setVoiceLocale] = useState<IdiomaTranscricao>('pt-BR');
-
-  useEffect(() => {
-    getJson<IdiomaTranscricao>(STORAGE_KEYS.voiceLocale, 'pt-BR').then(setVoiceLocale);
-  }, []);
-
-  const handleVoiceLocaleChange = (next: IdiomaTranscricao) => {
-    setVoiceLocale(next);
-    setJson(STORAGE_KEYS.voiceLocale, next);
-  };
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
-      <AppHeader title="Configurações" />
+      <AppHeader title={t('settings.title')} />
 
       <ScreenContainer>
-        <Text style={[styles.section, { color: colors.text }]}>Aparência</Text>
+        <Text style={[styles.section, { color: colors.text }]}>{t('settings.appearanceSection')}</Text>
         <View style={rowStyle}>
-          <Text style={{ color: colors.text }}>Tema escuro</Text>
+          <Text style={{ color: colors.text }}>{t('settings.darkTheme')}</Text>
           <Switch
             value={mode === 'dark'}
             onValueChange={(value) => setMode(value ? 'dark' : 'light')}
@@ -48,9 +41,9 @@ export function SettingsScreen() {
           />
         </View>
 
-        <Text style={[styles.section, { color: colors.text }]}>Notificações</Text>
+        <Text style={[styles.section, { color: colors.text }]}>{t('settings.notificationsSection')}</Text>
         <View style={rowStyle}>
-          <Text style={{ color: colors.text }}>Push</Text>
+          <Text style={{ color: colors.text }}>{t('settings.push')}</Text>
           <Switch
             value={preferences.pushEnabled}
             onValueChange={(value) => updatePreferences({ pushEnabled: value })}
@@ -59,7 +52,7 @@ export function SettingsScreen() {
         </View>
 
         <View style={rowStyle}>
-          <Text style={{ color: colors.text }}>E-mail</Text>
+          <Text style={{ color: colors.text }}>{t('settings.email')}</Text>
           <Switch
             value={preferences.emailEnabled}
             onValueChange={(value) => updatePreferences({ emailEnabled: value })}
@@ -67,17 +60,17 @@ export function SettingsScreen() {
           />
         </View>
 
-        <Text style={[styles.section, { color: colors.text }]}>Ditado por voz</Text>
+        <Text style={[styles.section, { color: colors.text }]}>{t('settings.languageSection')}</Text>
         <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
-          Idioma da transcrição
+          {t('settings.languageHelper')}
         </Text>
         <View style={styles.segmentedRow}>
-          {LOCALE_OPTIONS.map((option) => {
-            const selected = voiceLocale === option.value;
+          {LANGUAGE_OPTIONS.map((option) => {
+            const selected = language === option.value;
             return (
               <Pressable
                 key={option.value}
-                onPress={() => handleVoiceLocaleChange(option.value)}
+                onPress={() => setLanguage(option.value)}
                 style={[
                   styles.segment,
                   {
@@ -101,13 +94,11 @@ export function SettingsScreen() {
           })}
         </View>
 
-        <Text style={[styles.section, { color: colors.text }]}>Info</Text>
+        <Text style={[styles.section, { color: colors.text }]}>{t('settings.infoSection')}</Text>
         <View style={styles.infoBox}>
-          <Text style={{ color: colors.text, fontWeight: '700' }}>ArkIve</Text>
-          <Text style={{ color: colors.textSecondary }}>Versão 1.0.0</Text>
-          <Text style={{ color: colors.textSecondary }}>
-            © 2026 ArkIve — Gestão veterinária otimizada
-          </Text>
+          <Text style={{ color: colors.text, fontWeight: '700' }}>{t('common.appName')}</Text>
+          <Text style={{ color: colors.textSecondary }}>{t('settings.version')}</Text>
+          <Text style={{ color: colors.textSecondary }}>{t('settings.copyright')}</Text>
         </View>
       </ScreenContainer>
     </View>

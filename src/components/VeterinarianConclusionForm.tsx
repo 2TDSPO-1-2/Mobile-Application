@@ -3,15 +3,12 @@ import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { AppInput } from './AppInput';
 import { AppButton } from './AppButton';
 import { useThemeColors } from '../hooks/useThemeColors';
+import { useTranslation } from '../i18n/useTranslation';
 import type { FinalizarConsultaRequest, Severidade } from '../services/consultaService';
 import { spacing, fontSize, radius } from '../styles/theme';
 import { commonStyles } from '../styles/common';
 
-const SEVERIDADE_OPTIONS: { value: Severidade; label: string }[] = [
-  { value: 'LEVE', label: 'Leve' },
-  { value: 'MODERADA', label: 'Moderada' },
-  { value: 'GRAVE', label: 'Grave' },
-];
+const SEVERIDADE_VALUES: Severidade[] = ['LEVE', 'MODERADA', 'GRAVE'];
 
 interface Props {
   onSubmit: (input: FinalizarConsultaRequest) => void;
@@ -35,6 +32,7 @@ interface Props {
  */
 export function VeterinarianConclusionForm({ onSubmit, isSubmitting, errorMessage }: Props) {
   const colors = useThemeColors();
+  const { t } = useTranslation();
 
   const [diagnostico, setDiagnostico] = useState('');
   const [severidade, setSeveridade] = useState<Severidade | null>(null);
@@ -45,7 +43,7 @@ export function VeterinarianConclusionForm({ onSubmit, isSubmitting, errorMessag
     setValidationError('');
 
     if (!diagnostico.trim()) {
-      setValidationError('Informe o diagnóstico para finalizar a consulta.');
+      setValidationError(t('conclusion.validationNoDiagnosis'));
       return;
     }
 
@@ -59,16 +57,14 @@ export function VeterinarianConclusionForm({ onSubmit, isSubmitting, errorMessag
 
   return (
     <View style={styles.root}>
-      <Text style={[styles.intro, { color: colors.textSecondary }]}>
-        Registre sua decisão clínica final.
-      </Text>
+      <Text style={[styles.intro, { color: colors.textSecondary }]}>{t('conclusion.intro')}</Text>
 
       <View style={styles.section}>
         <Text style={[commonStyles.eyebrow, styles.sectionLabel, { color: colors.primary }]}>
-          Diagnóstico
+          {t('conclusion.diagnosisLabel')}
         </Text>
         <AppInput
-          placeholder="Diagnóstico definido pelo veterinário"
+          placeholder={t('conclusion.diagnosisPlaceholder')}
           value={diagnostico}
           onChangeText={setDiagnostico}
           editable={!isSubmitting}
@@ -78,19 +74,19 @@ export function VeterinarianConclusionForm({ onSubmit, isSubmitting, errorMessag
 
       <View style={styles.section}>
         <Text style={[commonStyles.eyebrow, styles.sectionLabel, { color: colors.primary }]}>
-          Severidade
+          {t('conclusion.severityLabel')}
         </Text>
         <View style={styles.severityRow}>
-          {SEVERIDADE_OPTIONS.map((option) => (
+          {SEVERIDADE_VALUES.map((value) => (
             <Pressable
-              key={option.value}
+              key={value}
               disabled={isSubmitting}
-              onPress={() => setSeveridade(option.value)}
+              onPress={() => setSeveridade(value)}
               style={[
                 styles.severityOption,
                 {
-                  backgroundColor: severidade === option.value ? colors.primary : colors.surface,
-                  borderColor: severidade === option.value ? colors.primary : colors.border,
+                  backgroundColor: severidade === value ? colors.primary : colors.surface,
+                  borderColor: severidade === value ? colors.primary : colors.border,
                 },
               ]}
             >
@@ -98,10 +94,10 @@ export function VeterinarianConclusionForm({ onSubmit, isSubmitting, errorMessag
                 numberOfLines={1}
                 style={[
                   styles.severityLabel,
-                  { color: severidade === option.value ? '#FFFFFF' : colors.text },
+                  { color: severidade === value ? '#FFFFFF' : colors.text },
                 ]}
               >
-                {option.label}
+                {t(`severidade.${value}`)}
               </Text>
             </Pressable>
           ))}
@@ -110,10 +106,10 @@ export function VeterinarianConclusionForm({ onSubmit, isSubmitting, errorMessag
 
       <View style={styles.section}>
         <Text style={[commonStyles.eyebrow, styles.sectionLabel, { color: colors.primary }]}>
-          Conclusão clínica
+          {t('conclusion.conclusionLabel')}
         </Text>
         <AppInput
-          placeholder="Conduta, orientações e observações finais"
+          placeholder={t('conclusion.conclusionPlaceholder')}
           value={conclusao}
           onChangeText={setConclusao}
           editable={!isSubmitting}
@@ -128,7 +124,7 @@ export function VeterinarianConclusionForm({ onSubmit, isSubmitting, errorMessag
       ) : null}
 
       <AppButton
-        title={isSubmitting ? 'Finalizando consulta...' : 'Finalizar consulta'}
+        title={isSubmitting ? t('conclusion.submitting') : t('conclusion.submit')}
         onPress={handleSubmit}
         loading={isSubmitting}
         disabled={isSubmitting}

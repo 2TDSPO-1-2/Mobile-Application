@@ -8,6 +8,7 @@ import { SearchBar } from '../components/SearchBar';
 import { AppCard } from '../components/AppCard';
 import { EmptyState } from '../components/EmptyState';
 import { useThemeColors } from '../hooks/useThemeColors';
+import { useTranslation } from '../i18n/useTranslation';
 import { usePatients, useClinicPatients } from '../hooks/usePatients';
 import type { AppStackParamList } from '../interfaces/navigation';
 import { spacing, fontSize, radius } from '../styles/theme';
@@ -25,6 +26,7 @@ type Scope = 'clinica' | 'atendidos';
  */
 export function PatientsScreen() {
   const colors = useThemeColors();
+  const { t } = useTranslation();
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
   const [scope, setScope] = useState<Scope>('clinica');
   const [search, setSearch] = useState('');
@@ -49,7 +51,7 @@ export function PatientsScreen() {
       <HomeHeader />
 
       <ScreenContainer>
-        <Text style={[styles.pageTitle, { color: colors.text }]}>Pacientes</Text>
+        <Text style={[styles.pageTitle, { color: colors.text }]}>{t('patientsList.title')}</Text>
 
         <View style={[styles.segmented, { borderColor: colors.border }]}>
           <Pressable
@@ -57,7 +59,7 @@ export function PatientsScreen() {
             onPress={() => setScope('clinica')}
           >
             <Text style={{ color: scope === 'clinica' ? '#FFF' : colors.text, fontSize: fontSize.sm }}>
-              Da clínica
+              {t('patientsList.clinicScope')}
             </Text>
           </Pressable>
           <Pressable
@@ -65,30 +67,26 @@ export function PatientsScreen() {
             onPress={() => setScope('atendidos')}
           >
             <Text style={{ color: scope === 'atendidos' ? '#FFF' : colors.text, fontSize: fontSize.sm }}>
-              Já atendidos
+              {t('patientsList.attendedScope')}
             </Text>
           </Pressable>
         </View>
 
-        <SearchBar value={search} onChangeText={setSearch} placeholder="Buscar paciente..." />
+        <SearchBar value={search} onChangeText={setSearch} placeholder={t('patientsList.searchPlaceholder')} />
 
         {isPending ? (
           <Text style={{ color: colors.textSecondary, textAlign: 'center' }}>
-            Carregando pacientes...
+            {t('patientsList.loading')}
           </Text>
         ) : isError ? (
           <EmptyState
-            title="Não foi possível carregar"
-            message={error instanceof Error ? error.message : 'Erro ao consultar o servidor.'}
+            title={t('patientsList.loadErrorTitle')}
+            message={error instanceof Error ? error.message : t('patientsList.genericServerError')}
           />
         ) : filtered.length === 0 ? (
           <EmptyState
-            title="Nenhum paciente encontrado"
-            message={
-              scope === 'clinica'
-                ? 'Nenhum paciente ativo cadastrado nesta clínica.'
-                : 'Pacientes vinculados às suas consultas aparecerão aqui.'
-            }
+            title={t('patientsList.emptyTitle')}
+            message={scope === 'clinica' ? t('patientsList.emptyClinicMessage') : t('patientsList.emptyAttendedMessage')}
           />
         ) : (
           filtered.map((animal) => (

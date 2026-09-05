@@ -52,6 +52,51 @@ export interface ApiRequestOptions extends Omit<RequestInit, 'body'> {
   authOverride?: StoredCredentials;
 }
 
+/** Shared by every request path (JSON and binary alike) — the one place credentials become a header. */
+async function resolveAuthHeaders(
+  authOverride: StoredCredentials | undefined,
+  extraHeaders: Record<string, string> | undefined
+): Promise<Record<string, string>> {
+  const headers: Record<string, string> = { ...extraHeaders };
+  const credentials = authOverride ?? (await getCredentials());
+  if (credentials) {
+    headers.Authorization = buildBasicAuthHeader(credentials);
+  }
+  return headers;
+}
+
+/**
+ * Shared by every request path — parses the backend's JSON error shape,
+ * fires the global 401 handler under the exact same rule as before, and
+ * throws `ApiError`. A binary endpoint (e.g. the consultation PDF) still
+ * returns a normal JSON error body on failure — only a 2xx response is ever
+ * binary — so this needs no binary-specific branch.
+ */
+async function throwForNonOkResponse(response: Response, authOverride: StoredCredentials | undefined): Promise<never> {
+  let message = response.statusText || `Erro ${response.status}`;
+  try {
+    // Confirmed live shape from the real backend's error body:
+    // {"timestamp":...,"status":401,"error":"Unauthorized","message":"Autenticacao obrigatoria.","path":...}
+    // `message` carries the specific, human-actionable text; `error` is
+    // just the generic HTTP reason phrase — prefer `message`.
+    const parsed = (await response.json()) as { error?: string; message?: string };
+    message = parsed.message ?? parsed.error ?? message;
+  } catch {
+    /* body wasn't JSON — keep the fallback message */
+  }
+
+  if (response.status === 401 && !authOverride) {
+    // A 401 on a request that used the *stored* credential means the
+    // session Spring Security accepted before is no longer valid (password
+    // changed, account disabled, ...). A 401 during the login probe
+    // (authOverride set) is an expected, locally-handled outcome instead —
+    // it must not trigger a global sign-out of an already-authenticated user.
+    emitUnauthorized();
+  }
+
+  throw new ApiError(response.status, message);
+}
+
 async function apiRequest<T>(path: string, options: ApiRequestOptions = {}): Promise<T> {
   const { body, authOverride, headers: extraHeaders, ...rest } = options;
   const url = `${API_BASE_URL}${path}`;
@@ -63,15 +108,10 @@ async function apiRequest<T>(path: string, options: ApiRequestOptions = {}): Pro
   // header with no boundary and a body Spring can't parse.
   const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
 
-  const headers: Record<string, string> = {
+  const headers = await resolveAuthHeaders(authOverride, {
     ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
     ...(extraHeaders as Record<string, string> | undefined),
-  };
-
-  const credentials = authOverride ?? (await getCredentials());
-  if (credentials) {
-    headers.Authorization = buildBasicAuthHeader(credentials);
-  }
+  });
 
   let response: Response;
   try {
@@ -96,28 +136,7 @@ async function apiRequest<T>(path: string, options: ApiRequestOptions = {}): Pro
   }
 
   if (!response.ok) {
-    let message = response.statusText || `Erro ${response.status}`;
-    try {
-      // Confirmed live shape from the real backend's error body:
-      // {"timestamp":...,"status":401,"error":"Unauthorized","message":"Autenticacao obrigatoria.","path":...}
-      // `message` carries the specific, human-actionable text; `error` is
-      // just the generic HTTP reason phrase — prefer `message`.
-      const parsed = (await response.json()) as { error?: string; message?: string };
-      message = parsed.message ?? parsed.error ?? message;
-    } catch {
-      /* body wasn't JSON — keep the fallback message */
-    }
-
-    if (response.status === 401 && !authOverride) {
-      // A 401 on a request that used the *stored* credential means the
-      // session Spring Security accepted before is no longer valid (password
-      // changed, account disabled, ...). A 401 during the login probe
-      // (authOverride set) is an expected, locally-handled outcome instead —
-      // it must not trigger a global sign-out of an already-authenticated user.
-      emitUnauthorized();
-    }
-
-    throw new ApiError(response.status, message);
+    await throwForNonOkResponse(response, authOverride);
   }
 
   if (response.status === 204) {
@@ -129,6 +148,39 @@ async function apiRequest<T>(path: string, options: ApiRequestOptions = {}): Pro
   } catch {
     return undefined as T;
   }
+}
+
+export interface BinaryResponse {
+  data: ArrayBuffer;
+  contentType: string | null;
+}
+
+/**
+ * The binary counterpart to `apiGet` — same base URL, same stored Basic Auth,
+ * same 401/`ApiError`/`NetworkError` behavior (via the two helpers above), but
+ * NEVER calls `response.json()` on success: a PDF (or any other binary body)
+ * would throw there, and even if it didn't, `T` would be meaningless. Callers
+ * get the raw `ArrayBuffer` plus the response's `Content-Type` and decide
+ * what to do with the bytes themselves.
+ */
+export async function apiGetBinary(path: string, options?: ApiRequestOptions): Promise<BinaryResponse> {
+  const { authOverride, headers: extraHeaders } = options ?? {};
+  const url = `${API_BASE_URL}${path}`;
+  const headers = await resolveAuthHeaders(authOverride, extraHeaders as Record<string, string> | undefined);
+
+  let response: Response;
+  try {
+    response = await expoFetch(url, { method: 'GET', headers });
+  } catch {
+    throw new NetworkError();
+  }
+
+  if (!response.ok) {
+    await throwForNonOkResponse(response, authOverride);
+  }
+
+  const data = await response.arrayBuffer();
+  return { data, contentType: response.headers.get('content-type') };
 }
 
 export async function apiGet<T>(path: string, options?: ApiRequestOptions): Promise<T> {

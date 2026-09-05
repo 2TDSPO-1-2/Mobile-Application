@@ -13,6 +13,7 @@ import { DateField } from '../components/DateField';
 import { TimeField } from '../components/TimeField';
 import { EmptyState } from '../components/EmptyState';
 import { useThemeColors } from '../hooks/useThemeColors';
+import { useTranslation } from '../i18n/useTranslation';
 import { useClinicPatients } from '../hooks/usePatients';
 import { useConsultas, useCreateConsulta } from '../hooks/useConsultas';
 import type { AnimalDto } from '../services/patientService';
@@ -21,10 +22,7 @@ import type { AppStackParamList } from '../interfaces/navigation';
 import { spacing, fontSize, radius } from '../styles/theme';
 import { commonStyles } from '../styles/common';
 
-const MODALIDADES: { value: Modalidade; label: string }[] = [
-  { value: 'PRESENCIAL', label: 'Presencial' },
-  { value: 'REMOTA', label: 'Remota' },
-];
+const MODALIDADE_VALUES: Modalidade[] = ['PRESENCIAL', 'REMOTA'];
 const SEARCH_DEBOUNCE_MS = 300;
 
 /**
@@ -45,6 +43,7 @@ export function NewConsultaScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
   const route = useRoute<RouteProp<AppStackParamList, 'CriarConsulta'>>();
   const colors = useThemeColors();
+  const { t } = useTranslation();
 
   // The backend has no endpoint for "which veterinarian am I" (see
   // consultaService.ts). Since GET /api/consultas is scoped server-side to
@@ -105,27 +104,27 @@ export function NewConsultaScreen() {
     setError('');
 
     if (!veterinarioId) {
-      setError('Não foi possível identificar o veterinário autenticado.');
+      setError(t('newConsulta.errorNoVet'));
       return;
     }
     if (!selectedAnimal) {
-      setError('Selecione um paciente.');
+      setError(t('newConsulta.errorNoPatient'));
       return;
     }
     if (!modalidade) {
-      setError('Selecione a modalidade da consulta.');
+      setError(t('newConsulta.errorNoModalidade'));
       return;
     }
     if (!date) {
-      setError('Selecione uma data para a consulta.');
+      setError(t('newConsulta.errorNoDate'));
       return;
     }
     if (!time) {
-      setError('Selecione um horário para a consulta.');
+      setError(t('newConsulta.errorNoTime'));
       return;
     }
     if (!motivo.trim()) {
-      setError('Descreva o motivo da consulta.');
+      setError(t('newConsulta.errorNoReason'));
       return;
     }
 
@@ -140,7 +139,7 @@ export function NewConsultaScreen() {
 
       navigation.replace('ConsultaDetalhe', { consultaId: created.id });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Não foi possível criar a consulta.');
+      setError(err instanceof Error ? err.message : t('newConsulta.errorGeneric'));
     }
   };
 
@@ -151,23 +150,20 @@ export function NewConsultaScreen() {
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
-      <AppHeader title="Nova Consulta" />
+      <AppHeader title={t('newConsulta.title')} />
 
       <ScreenContainer>
         {resolvingVeterinario ? (
           <Text style={{ color: colors.textSecondary, marginBottom: spacing.md }}>
-            Carregando dados do veterinário...
+            {t('newConsulta.resolvingVet')}
           </Text>
         ) : !canIdentifyVeterinario ? (
-          <EmptyState
-            title="Não foi possível identificar o veterinário"
-            message="Isso acontece quando esta conta ainda não possui nenhuma consulta registrada. Peça a um administrador da clínica para cadastrar a primeira consulta, ou tente novamente mais tarde."
-          />
+          <EmptyState title={t('newConsulta.noVetTitle')} message={t('newConsulta.noVetMessage')} />
         ) : (
           <>
             {/* PACIENTE */}
             <Text style={[commonStyles.eyebrow, styles.sectionLabelFirst, { color: colors.primary }]}>
-              Paciente
+              {t('newConsulta.patientSection')}
             </Text>
 
             {selectedAnimal && !changingPatient ? (
@@ -190,21 +186,21 @@ export function NewConsultaScreen() {
                 <SearchBar
                   value={searchInput}
                   onChangeText={setSearchInput}
-                  placeholder="Buscar paciente da clínica..."
+                  placeholder={t('newConsulta.searchPatientPlaceholder')}
                 />
 
                 <Text style={[styles.subLabel, { color: colors.textSecondary }]}>
-                  {trimmedSearch ? 'Resultados da busca' : 'Pacientes da clínica'}
+                  {trimmedSearch ? t('newConsulta.searchResults') : t('newConsulta.clinicPatients')}
                 </Text>
 
                 {patientsPending ? (
                   <Text style={{ color: colors.textSecondary, marginBottom: spacing.sm }}>
-                    Carregando pacientes...
+                    {t('newConsulta.loadingPatients')}
                   </Text>
                 ) : patientsError ? (
                   <EmptyState
-                    title="Não foi possível carregar pacientes"
-                    message="Verifique a conexão com o servidor e tente novamente."
+                    title={t('newConsulta.loadPatientsErrorTitle')}
+                    message={t('newConsulta.loadPatientsErrorMessage')}
                   />
                 ) : clinicPatients && clinicPatients.length > 0 ? (
                   clinicPatients.map((animal) => {
@@ -243,18 +239,18 @@ export function NewConsultaScreen() {
                   })
                 ) : trimmedSearch.length > 0 ? (
                   <EmptyState
-                    title="Nenhum paciente encontrado"
-                    message={`Nenhum paciente encontrado para "${trimmedSearch}".`}
+                    title={t('newConsulta.noPatientsTitle')}
+                    message={t('newConsulta.noPatientsFoundFor', { query: trimmedSearch })}
                   />
                 ) : (
                   <EmptyState
-                    title="Nenhum paciente cadastrado"
-                    message="Esta clínica ainda não possui pacientes ativos cadastrados."
+                    title={t('newConsulta.noClinicPatientsTitle')}
+                    message={t('newConsulta.noClinicPatientsMessage')}
                   />
                 )}
 
                 <AppButton
-                  title="Cadastrar novo paciente"
+                  title={t('newConsulta.registerNewPatient')}
                   variant="ghost"
                   icon="add"
                   onPress={() => navigation.navigate('NovoPaciente')}
@@ -264,15 +260,15 @@ export function NewConsultaScreen() {
 
             {/* MODALIDADE */}
             <Text style={[commonStyles.eyebrow, styles.sectionLabel, { color: colors.primary }]}>
-              Modalidade
+              {t('newConsulta.modalidadeSection')}
             </Text>
             <View style={styles.segmentedRow}>
-              {MODALIDADES.map((option) => {
-                const selected = modalidade === option.value;
+              {MODALIDADE_VALUES.map((value) => {
+                const selected = modalidade === value;
                 return (
                   <Pressable
-                    key={option.value}
-                    onPress={() => setModalidade(option.value)}
+                    key={value}
+                    onPress={() => setModalidade(value)}
                     style={[
                       styles.segment,
                       {
@@ -288,7 +284,7 @@ export function NewConsultaScreen() {
                         fontSize: fontSize.md,
                       }}
                     >
-                      {option.label}
+                      {value === 'PRESENCIAL' ? t('newConsulta.modalidadePresencial') : t('newConsulta.modalidadeRemota')}
                     </Text>
                   </Pressable>
                 );
@@ -297,18 +293,18 @@ export function NewConsultaScreen() {
 
             {/* DATA E HORÁRIO */}
             <Text style={[commonStyles.eyebrow, styles.sectionLabel, { color: colors.primary }]}>
-              Data e horário
+              {t('newConsulta.dateTimeSection')}
             </Text>
-            <DateField label="Data" value={date} onChange={setDate} />
-            <TimeField label="Horário" value={time} onChange={setTime} />
+            <DateField label={t('newConsulta.dateLabel')} value={date} onChange={setDate} />
+            <TimeField label={t('newConsulta.timeLabel')} value={time} onChange={setTime} />
 
             {/* MOTIVO */}
             <Text style={[commonStyles.eyebrow, styles.sectionLabel, { color: colors.primary }]}>
-              Motivo
+              {t('newConsulta.reasonSection')}
             </Text>
             <AppInput
-              label="Descrição"
-              placeholder="Descreva o motivo da consulta"
+              label={t('newConsulta.reasonLabel')}
+              placeholder={t('newConsulta.reasonPlaceholder')}
               value={motivo}
               onChangeText={setMotivo}
               multiline
@@ -317,7 +313,7 @@ export function NewConsultaScreen() {
             {error ? <Text style={{ color: colors.error, marginBottom: spacing.sm }}>{error}</Text> : null}
 
             <AppButton
-              title="Criar consulta"
+              title={t('newConsulta.submit')}
               onPress={handleSave}
               loading={createMutation.isPending}
               disabled={createMutation.isPending || formDisabled}

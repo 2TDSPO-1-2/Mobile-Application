@@ -2,19 +2,18 @@ import React, { useState } from 'react';
 import { View, Text, Pressable, StyleSheet, Platform, Modal } from 'react-native';
 import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { useThemeColors } from '../hooks/useThemeColors';
+import { useTheme } from '../context/ThemeContext';
+import { useTranslation } from '../i18n/useTranslation';
 import { spacing, radius, fontSize } from '../styles/theme';
 import { commonStyles } from '../styles/common';
 import { CalendarGlyph } from './CalendarGlyph';
+import { formatDate } from '../utils/localeFormat';
 
 interface Props {
   label: string;
   value: Date | null;
   onChange: (date: Date) => void;
   error?: string;
-}
-
-function formatBR(date: Date): string {
-  return date.toLocaleDateString('pt-BR');
 }
 
 /**
@@ -37,6 +36,8 @@ function formatBR(date: Date): string {
  */
 export function DateField({ label, value, onChange, error }: Props) {
   const colors = useThemeColors();
+  const { mode } = useTheme();
+  const { t, language } = useTranslation();
   const [iosOpen, setIosOpen] = useState(false);
   const [draft, setDraft] = useState<Date>(value ?? new Date());
 
@@ -69,7 +70,7 @@ export function DateField({ label, value, onChange, error }: Props) {
         ]}
       >
         <Text style={{ color: value ? colors.text : colors.textSecondary, fontSize: fontSize.md }}>
-          {value ? formatBR(value) : 'DD/MM/AAAA'}
+          {value ? formatDate(value) : t('date.datePlaceholder')}
         </Text>
         <CalendarGlyph color={colors.primary} />
       </Pressable>
@@ -82,19 +83,21 @@ export function DateField({ label, value, onChange, error }: Props) {
             <View style={[styles.sheet, { backgroundColor: colors.surface }]}>
               <View style={[styles.sheetHeader, { borderBottomColor: colors.border }]}>
                 <Pressable onPress={() => setIosOpen(false)}>
-                  <Text style={{ color: colors.textSecondary, fontSize: fontSize.sm }}>Cancelar</Text>
+                  <Text style={{ color: colors.textSecondary, fontSize: fontSize.sm }}>{t('date.pickerCancel')}</Text>
                 </Pressable>
                 <Pressable onPress={confirm}>
-                  <Text style={{ color: colors.primary, fontWeight: '700', fontSize: fontSize.sm }}>Concluído</Text>
+                  <Text style={{ color: colors.primary, fontWeight: '700', fontSize: fontSize.sm }}>
+                    {t('date.pickerDone')}
+                  </Text>
                 </Pressable>
               </View>
               <DateTimePicker
                 value={draft}
                 mode="date"
                 display="spinner"
-                locale="pt-BR"
-                themeVariant="light"
-                textColor="#1F2937"
+                locale={language}
+                themeVariant={mode === 'dark' ? 'dark' : 'light'}
+                textColor={colors.text}
                 style={styles.picker}
                 onValueChange={(_event, selected) => setDraft(selected)}
               />

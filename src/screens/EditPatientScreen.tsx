@@ -7,6 +7,7 @@ import { ScreenContainer } from '../components/ScreenContainer';
 import { PatientForm } from '../components/PatientForm';
 import { EmptyState } from '../components/EmptyState';
 import { useThemeColors } from '../hooks/useThemeColors';
+import { useTranslation } from '../i18n/useTranslation';
 import { usePatient, useUpdatePatient } from '../hooks/usePatients';
 import { describePatientError } from '../utils/errorMessages';
 import type { AnimalRequestInput } from '../services/patientService';
@@ -23,6 +24,7 @@ export function EditPatientScreen() {
   const route = useRoute<RouteProp<AppStackParamList, 'EditarPaciente'>>();
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
   const colors = useThemeColors();
+  const { t } = useTranslation();
   const { patientId } = route.params;
 
   const { data: patient, isPending, isError, error: loadError } = usePatient(patientId);
@@ -42,9 +44,9 @@ export function EditPatientScreen() {
   if (isPending) {
     return (
       <View style={[styles.root, { backgroundColor: colors.background }]}>
-        <AppHeader title="Editar Paciente" />
+        <AppHeader title={t('patientForm.editTitle')} />
         <Text style={{ color: colors.textSecondary, textAlign: 'center', marginTop: spacing.xl }}>
-          Carregando paciente...
+          {t('patientDetail.loading')}
         </Text>
       </View>
     );
@@ -53,11 +55,11 @@ export function EditPatientScreen() {
   if (isError || !patient) {
     return (
       <View style={[styles.root, { backgroundColor: colors.background }]}>
-        <AppHeader title="Editar Paciente" />
+        <AppHeader title={t('patientForm.editTitle')} />
         <ScreenContainer>
           <EmptyState
-            title="Não foi possível carregar"
-            message={loadError instanceof Error ? loadError.message : 'Paciente não encontrado.'}
+            title={t('patientDetail.loadErrorTitle')}
+            message={loadError instanceof Error ? loadError.message : t('patientDetail.notFound')}
           />
         </ScreenContainer>
       </View>
@@ -66,7 +68,7 @@ export function EditPatientScreen() {
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
-      <AppHeader title="Editar Paciente" />
+      <AppHeader title={t('patientForm.editTitle')} />
       <ScreenContainer>
         <PatientForm
           initialValues={{
@@ -78,7 +80,7 @@ export function EditPatientScreen() {
           }}
           onSubmit={handleSubmit}
           submitting={updateMutation.isPending}
-          submitLabel="Salvar alterações"
+          submitLabel={t('patientForm.editSubmit')}
           errorMessage={error}
         />
       </ScreenContainer>

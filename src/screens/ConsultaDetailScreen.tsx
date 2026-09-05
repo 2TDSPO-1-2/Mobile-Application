@@ -12,6 +12,7 @@ import { ClinicalIntake } from '../components/ClinicalIntake';
 import { ClinicalSupportCard } from '../components/ClinicalSupportCard';
 import { ConfirmedDiagnosisCard } from '../components/ConfirmedDiagnosisCard';
 import { useThemeColors } from '../hooks/useThemeColors';
+import { useTranslation } from '../i18n/useTranslation';
 import {
   useConsulta,
   useConsultaClinicalSupport,
@@ -23,15 +24,17 @@ import { useConsultaDiagnosticos } from '../hooks/useDiagnosticos';
 import { findConfirmedDiagnosis } from '../services/diagnosticoService';
 import { consultaStatusPresentation } from '../utils/statusPresentation';
 import { describeNarrativeSaveError } from '../utils/errorMessages';
+import { formatDate, formatTime } from '../utils/localeFormat';
+import { t } from '../i18n/store';
 import type { AppStackParamList } from '../interfaces/navigation';
 import { spacing, fontSize } from '../styles/theme';
 
 function formatContextLine(dataHora: string, modalidade: string): string {
   const date = new Date(dataHora);
-  if (Number.isNaN(date.getTime())) return modalidade === 'PRESENCIAL' ? 'Presencial' : 'Remota';
-  const dateLabel = date.toLocaleDateString('pt-BR');
-  const timeLabel = date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-  const modalidadeLabel = modalidade === 'PRESENCIAL' ? 'Presencial' : 'Remota';
+  const modalidadeLabel = modalidade === 'PRESENCIAL' ? t('home.presencial') : t('home.remota');
+  if (Number.isNaN(date.getTime())) return modalidadeLabel;
+  const dateLabel = formatDate(date);
+  const timeLabel = formatTime(date);
   return `${modalidadeLabel} · ${dateLabel} · ${timeLabel}`;
 }
 
@@ -50,6 +53,7 @@ export function ConsultaDetailScreen() {
   const route = useRoute<RouteProp<AppStackParamList, 'ConsultaDetalhe'>>();
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
   const colors = useThemeColors();
+  const { t } = useTranslation();
   const { consultaId } = route.params;
 
   const { data: consulta, isPending, isError, error, refetch } = useConsulta(consultaId);
@@ -78,18 +82,18 @@ export function ConsultaDetailScreen() {
     try {
       await startMutation.mutateAsync();
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : 'Não foi possível iniciar a consulta.');
+      setActionError(err instanceof Error ? err.message : t('consultaDetail.startError'));
     }
   };
 
   const handleDelete = () => {
     Alert.alert(
-      'Excluir consulta',
-      `Tem certeza que deseja excluir a consulta #${consultaId}? Esta ação não pode ser desfeita.`,
+      t('consultaDetail.deleteConfirmTitle'),
+      t('consultaDetail.deleteConfirmMessage', { id: consultaId }),
       [
-        { text: 'Cancelar', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Excluir',
+          text: t('common.delete'),
           style: 'destructive',
           onPress: async () => {
             setActionError('');
@@ -97,9 +101,7 @@ export function ConsultaDetailScreen() {
               await deleteMutation.mutateAsync(consultaId);
               navigation.goBack();
             } catch (err) {
-              setActionError(
-                err instanceof Error ? err.message : 'Não foi possível excluir a consulta.'
-              );
+              setActionError(err instanceof Error ? err.message : t('consultaDetail.deleteError'));
             }
           },
         },
@@ -123,9 +125,9 @@ export function ConsultaDetailScreen() {
   if (isPending) {
     return (
       <View style={[styles.root, { backgroundColor: colors.background }]}>
-        <AppHeader title="Consulta" />
+        <AppHeader title={t('consultaDetail.genericTitle')} />
         <Text style={{ color: colors.textSecondary, textAlign: 'center', marginTop: spacing.xl }}>
-          Carregando consulta...
+          {t('consultaDetail.loading')}
         </Text>
       </View>
     );
@@ -134,13 +136,13 @@ export function ConsultaDetailScreen() {
   if (isError || !consulta) {
     return (
       <View style={[styles.root, { backgroundColor: colors.background }]}>
-        <AppHeader title="Consulta" />
+        <AppHeader title={t('consultaDetail.genericTitle')} />
         <ScreenContainer>
           <EmptyState
-            title="Não foi possível carregar"
-            message={error instanceof Error ? error.message : 'Consulta não encontrada.'}
+            title={t('consultaDetail.loadErrorTitle')}
+            message={error instanceof Error ? error.message : t('consultaDetail.notFound')}
           />
-          <AppButton title="Tentar novamente" variant="outline" onPress={() => refetch()} />
+          <AppButton title={t('common.tryAgain')} variant="outline" onPress={() => refetch()} />
         </ScreenContainer>
       </View>
     );
@@ -151,7 +153,7 @@ export function ConsultaDetailScreen() {
   if (consulta.status === 'EP') {
     return (
       <View style={[styles.root, { backgroundColor: colors.background }]}>
-        <AppHeader title={`Consulta #${consulta.id}`} />
+        <AppHeader title={t('consultaDetail.title', { id: consulta.id })} />
         <ScreenContainer>
           <ClinicalIntake
             animalNome={consulta.animalNome}
@@ -170,7 +172,7 @@ export function ConsultaDetailScreen() {
   if (consulta.status === 'AP') {
     return (
       <View style={[styles.root, { backgroundColor: colors.background }]}>
-        <AppHeader title={`Consulta #${consulta.id}`} />
+        <AppHeader title={t('consultaDetail.title', { id: consulta.id })} />
       </View>
     );
   }
@@ -181,37 +183,41 @@ export function ConsultaDetailScreen() {
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
-      <AppHeader title={`Consulta #${consulta.id}`} />
+      <AppHeader title={t('consultaDetail.title', { id: consulta.id })} />
 
       <ScreenContainer>
         <AppCard>
           <View style={styles.row}>
-            <Text style={[styles.label, { color: colors.text }]}>Status</Text>
+            <Text style={[styles.label, { color: colors.text }]}>{t('consultaDetail.statusLabel')}</Text>
             <StatusBadge
               label={consulta.statusDescricao}
               tone={consultaStatusPresentation(consulta.status).tone}
             />
           </View>
 
-          <Text style={[styles.field, { color: colors.text }]}>Paciente: {consulta.animalNome}</Text>
+          <Text style={[styles.field, { color: colors.text }]}>
+            {t('consultaDetail.patientLabel', { name: consulta.animalNome })}
+          </Text>
           <Text style={[styles.field, { color: colors.textSecondary }]}>
-            {consulta.modalidade === 'PRESENCIAL' ? 'Presencial' : 'Remota'} ·{' '}
-            {new Date(consulta.dataHora).toLocaleString('pt-BR')}
+            {consulta.modalidade === 'PRESENCIAL' ? t('home.presencial') : t('home.remota')} ·{' '}
+            {formatDate(new Date(consulta.dataHora))} {formatTime(new Date(consulta.dataHora))}
           </Text>
 
           {consulta.motivo ? (
-            <Text style={[styles.field, { color: colors.text }]}>Motivo: {consulta.motivo}</Text>
+            <Text style={[styles.field, { color: colors.text }]}>
+              {t('consultaDetail.reasonLabel', { reason: consulta.motivo })}
+            </Text>
           ) : null}
 
           {consulta.sintomas ? (
             <Text style={[styles.field, { color: colors.textSecondary }]}>
-              Sintomas: {consulta.sintomas}
+              {t('consultaDetail.symptomsLabel', { symptoms: consulta.sintomas })}
             </Text>
           ) : null}
 
           {consulta.peso != null ? (
             <Text style={[styles.field, { color: colors.textSecondary }]}>
-              Peso: {consulta.peso} kg
+              {t('consultaDetail.weightLabel', { weight: consulta.peso })}
             </Text>
           ) : null}
         </AppCard>
@@ -220,7 +226,7 @@ export function ConsultaDetailScreen() {
           <>
             {consulta.transcricao ? (
               <AppCard>
-                <Text style={[styles.label, { color: colors.text }]}>Narrativa clínica</Text>
+                <Text style={[styles.label, { color: colors.text }]}>{t('consultaDetail.narrativeLabel')}</Text>
                 <Text style={[styles.field, { color: colors.text }]}>{consulta.transcricao}</Text>
               </AppCard>
             ) : null}
@@ -229,27 +235,27 @@ export function ConsultaDetailScreen() {
 
             {diagnosticos.isPending ? (
               <Text style={{ color: colors.textSecondary, marginBottom: spacing.md }}>
-                Carregando conclusão do veterinário...
+                {t('consultaDetail.loadingConclusion')}
               </Text>
             ) : confirmedDiagnosis ? (
               <ConfirmedDiagnosisCard diagnosis={confirmedDiagnosis} conclusao={consulta.observacao} />
             ) : null}
 
             <AppButton
-              title="Prescrições"
+              title={t('consultaDetail.prescricoesButton')}
               variant="outline"
               onPress={() => navigation.navigate('Prescricoes', { consultaId: consulta.id })}
             />
 
             <Text style={{ color: colors.textSecondary, marginBottom: spacing.md }}>
-              Consulta encerrada — registro somente leitura.
+              {t('consultaDetail.closedReadOnly')}
             </Text>
           </>
         ) : null}
 
         {consulta.status === 'CA' ? (
           <Text style={{ color: colors.textSecondary, marginBottom: spacing.md }}>
-            Consulta encerrada — registro somente leitura.
+            {t('consultaDetail.closedReadOnly')}
           </Text>
         ) : null}
 
@@ -258,12 +264,16 @@ export function ConsultaDetailScreen() {
         ) : null}
 
         {canStart ? (
-          <AppButton title="Iniciar consulta" onPress={handleStart} loading={startMutation.isPending} />
+          <AppButton
+            title={t('consultaDetail.startConsulta')}
+            onPress={handleStart}
+            loading={startMutation.isPending}
+          />
         ) : null}
 
         {canDelete ? (
           <AppButton
-            title="Excluir consulta"
+            title={t('consultaDetail.deleteConsulta')}
             variant="danger"
             onPress={handleDelete}
             loading={deleteMutation.isPending}

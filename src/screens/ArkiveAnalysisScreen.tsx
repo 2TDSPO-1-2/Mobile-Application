@@ -7,6 +7,7 @@ import { ScreenContainer } from '../components/ScreenContainer';
 import { AppButton } from '../components/AppButton';
 import { VoiceOrb } from '../components/VoiceOrb';
 import { useThemeColors } from '../hooks/useThemeColors';
+import { useTranslation } from '../i18n/useTranslation';
 import { useClinicalSupportGeneration } from '../hooks/useClinicalSupportGeneration';
 import type { AppStackParamList } from '../interfaces/navigation';
 import { spacing, fontSize } from '../styles/theme';
@@ -17,11 +18,7 @@ import { spacing, fontSize } from '../styles/theme';
 // the clinical engine's cold-start/retry window without it ever reading as
 // a failure — recovery is persistent, so this keeps rotating for as long as
 // it takes, not for a fixed number of attempts.
-const MESSAGES = [
-  'Organizando o relato clínico...',
-  'Analisando as informações do caso...',
-  'Preparando o apoio à decisão...',
-];
+const MESSAGE_KEYS = ['aiAnalysis.rotating1', 'aiAnalysis.rotating2', 'aiAnalysis.rotating3'] as const;
 const MESSAGE_INTERVAL_MS = 3500;
 
 /**
@@ -42,6 +39,7 @@ export function ArkiveAnalysisScreen() {
   const route = useRoute<RouteProp<AppStackParamList, 'AnaliseArkive'>>();
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
   const colors = useThemeColors();
+  const { t } = useTranslation();
   const { consultaId } = route.params;
 
   const { phase, errorMessage, isSlow, generate } = useClinicalSupportGeneration(consultaId);
@@ -65,14 +63,14 @@ export function ArkiveAnalysisScreen() {
   useEffect(() => {
     if (phase !== 'analyzing') return;
     const interval = setInterval(() => {
-      setMessageIndex((current) => (current + 1) % MESSAGES.length);
+      setMessageIndex((current) => (current + 1) % MESSAGE_KEYS.length);
     }, MESSAGE_INTERVAL_MS);
     return () => clearInterval(interval);
   }, [phase]);
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
-      <AppHeader title="Análise ArkIve" />
+      <AppHeader title={t('aiAnalysis.title')} />
 
       <ScreenContainer>
         <View style={styles.center}>
@@ -80,12 +78,12 @@ export function ArkiveAnalysisScreen() {
 
           {phase === 'error' ? (
             <>
-              <Text style={[styles.title, { color: colors.text }]}>Não foi possível concluir agora</Text>
+              <Text style={[styles.title, { color: colors.text }]}>{t('aiAnalysis.errorTitle')}</Text>
               <Text style={[styles.message, { color: colors.error }]}>{errorMessage}</Text>
 
-              <AppButton title="Tentar novamente" onPress={generate} style={styles.actionButton} />
+              <AppButton title={t('common.tryAgain')} onPress={generate} style={styles.actionButton} />
               <AppButton
-                title="Voltar ao relato"
+                title={t('aiAnalysis.backToNarrative')}
                 variant="outline"
                 onPress={() => navigation.goBack()}
                 style={styles.actionButton}
@@ -93,16 +91,14 @@ export function ArkiveAnalysisScreen() {
             </>
           ) : (
             <>
-              <Text style={[styles.title, { color: colors.text }]}>Analisando o caso</Text>
+              <Text style={[styles.title, { color: colors.text }]}>{t('aiAnalysis.analyzingTitle')}</Text>
               <Text style={[styles.message, { color: colors.textSecondary }]}>
-                ArkIve está preparando informações para apoiar sua avaliação.
+                {t('aiAnalysis.analyzingSubtitle')}
               </Text>
-              <Text style={[styles.rotating, { color: colors.primary }]}>{MESSAGES[messageIndex]}</Text>
+              <Text style={[styles.rotating, { color: colors.primary }]}>{t(MESSAGE_KEYS[messageIndex])}</Text>
 
               {isSlow ? (
-                <Text style={[styles.slow, { color: colors.textSecondary }]}>
-                  Está levando um pouco mais de tempo que o normal. Continuamos preparando sua análise.
-                </Text>
+                <Text style={[styles.slow, { color: colors.textSecondary }]}>{t('aiAnalysis.slowMessage')}</Text>
               ) : null}
             </>
           )}
