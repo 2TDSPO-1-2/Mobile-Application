@@ -183,6 +183,13 @@ export function useRequestClinicalSupport(id: number) {
  * is AP, the narrative is already saved and AI already ran. `retry: false`
  * for the same reason as the AI mutation: this
  * must never be silently repeated.
+ *
+ * `onSuccess` SYNCHRONOUSLY seeds the detail (and list) cache with the real
+ * finalized response (status FI) before invalidating — a plain invalidate
+ * leaves a window where a freshly-mounted ConsultaDetailScreen still reads
+ * the stale AP row and redirects to InsightArkive before the refetch
+ * resolves (confirmed physical bug: the "bounce back to AP" race). By the
+ * time `mutateAsync` resolves, the cache must already say FI.
  */
 export function useFinalizeConsulta(id: number) {
   const queryClient = useQueryClient();
@@ -195,7 +202,11 @@ export function useFinalizeConsulta(id: number) {
         queryClient.invalidateQueries({ queryKey: queryKeys.consultas.detail(id) });
       }
     },
-    onSuccess: () => {
+    onSuccess: (finalized) => {
+      queryClient.setQueryData(queryKeys.consultas.detail(id), finalized);
+      queryClient.setQueryData<ConsultaDto[]>(queryKeys.consultas.list(), (current) =>
+        current?.map((consulta) => (consulta.id === id ? { ...consulta, ...finalized } : consulta))
+      );
       queryClient.invalidateQueries({ queryKey: queryKeys.consultas.detail(id) });
       queryClient.invalidateQueries({ queryKey: queryKeys.consultas.list() });
       queryClient.invalidateQueries({ queryKey: queryKeys.consultas.clinicalSupport(id) });

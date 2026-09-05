@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useThemeColors } from '../hooks/useThemeColors';
+import { useTheme } from '../context/ThemeContext';
 import { spacing, fontSize, radius } from '../styles/theme';
 import type { AppStackParamList } from '../interfaces/navigation';
 
@@ -16,6 +17,7 @@ import type { AppStackParamList } from '../interfaces/navigation';
  */
 export function HomeHeader() {
   const colors = useThemeColors();
+  const { mode } = useTheme();
   const insets = useSafeAreaInsets();
   const navigation =
     useNavigation<NativeStackNavigationProp<AppStackParamList>>();
@@ -36,7 +38,12 @@ export function HomeHeader() {
           source={require('../assets/branding/favicon.png')}
           style={styles.logo}
           resizeMode="contain"
-          tintColor="#000000"
+          // Unlike the pre-auth Login/Register screens (deliberately pinned
+          // to pure black regardless of theme), this header is in-app and
+          // already follows the user's dark-mode preference — the mark must
+          // flip to white in night mode or it disappears against the dark
+          // surface behind it.
+          tintColor={mode === 'dark' ? '#FFFFFF' : '#000000'}
         />
         <Text style={[styles.brand, { color: colors.text }]} numberOfLines={1}>
           ArkIve

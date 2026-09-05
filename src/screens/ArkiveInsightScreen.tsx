@@ -11,7 +11,7 @@ import { EmptyState } from '../components/EmptyState';
 import { ClinicalSupportCard } from '../components/ClinicalSupportCard';
 import { useThemeColors } from '../hooks/useThemeColors';
 import { useConsulta, useConsultaClinicalSupport } from '../hooks/useConsultas';
-import { isTransientInfraError } from '../services/apiClient';
+import { isSupportNotYetPersisted } from '../services/consultaService';
 import type { AppStackParamList } from '../interfaces/navigation';
 import { spacing, fontSize } from '../styles/theme';
 import { commonStyles } from '../styles/common';
@@ -38,10 +38,13 @@ export function ArkiveInsightScreen() {
   const { data: consulta, isPending: consultaPending } = useConsulta(consultaId);
   const support = useConsultaClinicalSupport(consultaId, {
     enabled: true,
-    // Transient (500/502/503/504/network): keep retrying forever with a
-    // capped backoff — never surfaces as a failure. Non-transient
-    // (401/403/404/422): stop immediately, that's a real error.
-    retry: (_failureCount, error) => isTransientInfraError(error),
+    // This screen only exists for the AP/finalized-insight flow, where
+    // persisted support is expected sooner or later — a 404 here just means
+    // "not readable yet" (confirmed physical race right after generation),
+    // same as a transient infra error: keep retrying forever with a capped
+    // backoff, never surface it as a failure. Only a genuine non-transient,
+    // non-404 error (401/403/422/...) stops retrying and shows the card.
+    retry: (_failureCount, error) => isSupportNotYetPersisted(error),
     retryDelay: (attempt) => Math.min(4000 + attempt * 2000, 10000),
   });
   const [showNarrative, setShowNarrative] = useState(false);
@@ -65,7 +68,7 @@ export function ArkiveInsightScreen() {
 
         {support.data ? (
           <ClinicalSupportCard support={support.data} />
-        ) : support.isError && !isTransientInfraError(support.error) ? (
+        ) : support.isError && !isSupportNotYetPersisted(support.error) ? (
           <EmptyState
             title="Não foi possível carregar o apoio clínico"
             message="Tente novamente em instantes."

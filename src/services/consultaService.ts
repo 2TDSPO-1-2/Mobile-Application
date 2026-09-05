@@ -1,4 +1,13 @@
-import { apiDelete, apiGet, apiPatch, apiPost, apiPut, ApiError, NetworkError } from './apiClient';
+import {
+  apiDelete,
+  apiGet,
+  apiPatch,
+  apiPost,
+  apiPut,
+  ApiError,
+  NetworkError,
+  isTransientInfraError,
+} from './apiClient';
 
 /**
  * TEMPORARY diagnostic — sanitized (id, HTTP status, and the backend's own
@@ -185,6 +194,21 @@ export async function getClinicalSupport(id: number): Promise<ClinicalSupportRes
     logAiDiagnostic('recovery GET', id, err);
     throw err;
   }
+}
+
+/**
+ * A 404 from `getClinicalSupport` does not necessarily mean support will
+ * never exist — confirmed physical race: right after generation POSTs 200,
+ * the very next GET can still 404 briefly before the write is visible to a
+ * read. For a consultation whose workflow already moved past EP (AP or FI),
+ * persisted support is expected sooner or later, so a 404 there reads the
+ * same as a transient infra hiccup: keep loading and retry, never a hard
+ * failure card. Only ever call this GET's caller sites for AP/FI/insight
+ * contexts — that's what makes treating 404 as transient safe here.
+ */
+export function isSupportNotYetPersisted(error: unknown): boolean {
+  if (error instanceof ApiError && error.status === 404) return true;
+  return isTransientInfraError(error);
 }
 
 /**

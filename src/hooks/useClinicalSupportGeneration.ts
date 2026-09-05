@@ -26,10 +26,13 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-// 409 means another attempt is already generating server-side — never POST
-// again, just keep checking the safe read-only GET until it's done. This
-// polls indefinitely (bounded only by the run/mounted guards below), because
-// the server workflow is the source of truth and may still be working.
+// Used both (a) after a 409 ("already generating server-side" — never POST
+// again, just keep checking the safe read-only GET until it's done) and (b)
+// after a 200 from the generation POST itself: a 200 only confirms the
+// engine call completed, NOT that the persisted result is readable yet —
+// confirmed physical race where the very next GET can still briefly 404.
+// Both cases poll indefinitely (bounded only by the run/mounted guards
+// below), because the server workflow is the source of truth.
 const POLL_INTERVAL_MS = 4500;
 
 // 500/502/503/504/network means generation itself may not have completed —
@@ -119,19 +122,23 @@ export function useClinicalSupportGeneration(consultaId: number) {
     }
   }, [consultaId]);
 
-  const pollUntilPersisted = useCallback(
+  /**
+   * Checks immediately (so a POST 200 that already persisted doesn't waste a
+   * full poll interval), then keeps polling until the GET confirms support
+   * is actually readable. Never falls back to finishError: server workflow
+   * status is the source of truth, and a POST 200 alone is NEVER enough to
+   * declare success — only a confirmed persisted GET is.
+   */
+  const waitForPersistedSupport = useCallback(
     async (runId: number) => {
       while (isCurrent(runId)) {
-        await sleep(POLL_INTERVAL_MS);
-        if (!isCurrent(runId)) return;
         const found = await checkPersisted();
         if (!isCurrent(runId)) return;
         if (found) {
           finishSuccess();
           return;
         }
-        // Not found yet — keep polling. Never falls back to finishError:
-        // server workflow status is the source of truth here.
+        await sleep(POLL_INTERVAL_MS);
       }
     },
     [isCurrent, checkPersisted, finishSuccess]
@@ -144,7 +151,10 @@ export function useClinicalSupportGeneration(consultaId: number) {
         try {
           await requestSupport.mutateAsync();
           if (!isCurrent(runId)) return;
-          finishSuccess();
+          // A 200 here is NOT enough to leave `analyzing` — confirm the
+          // result is actually readable via the safe GET first, staying in
+          // `analyzing` (no failure flash) until it is.
+          await waitForPersistedSupport(runId);
           return;
         } catch (err) {
           if (!isCurrent(runId)) return;
@@ -157,7 +167,7 @@ export function useClinicalSupportGeneration(consultaId: number) {
           }
 
           if (processing) {
-            await pollUntilPersisted(runId);
+            await waitForPersistedSupport(runId);
             return;
           }
 
@@ -180,7 +190,7 @@ export function useClinicalSupportGeneration(consultaId: number) {
         }
       }
     },
-    [requestSupport, isCurrent, finishSuccess, finishError, pollUntilPersisted, checkPersisted]
+    [requestSupport, isCurrent, finishSuccess, finishError, waitForPersistedSupport, checkPersisted]
   );
 
   const generate = useCallback(() => {

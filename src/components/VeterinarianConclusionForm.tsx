@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
-import { AppCard } from './AppCard';
 import { AppInput } from './AppInput';
 import { AppButton } from './AppButton';
 import { useThemeColors } from '../hooks/useThemeColors';
 import type { FinalizarConsultaRequest, Severidade } from '../services/consultaService';
 import { spacing, fontSize, radius } from '../styles/theme';
+import { commonStyles } from '../styles/common';
 
 const SEVERIDADE_OPTIONS: { value: Severidade; label: string }[] = [
   { value: 'LEVE', label: 'Leve' },
@@ -24,8 +24,14 @@ interface Props {
  * way for this form to prefill from `hipoteseDiagnostica`/`severidadeSugerida`
  * even by accident, because it never receives them. Every field starts
  * blank; the veterinarian's conclusion is always an independent, active
- * decision. `doencaId` is always submitted as `null` — there is no backend
- * endpoint this app can use to look one up (see consultaService.ts).
+ * decision (a product invariant enforced structurally, not by a disclaimer
+ * paragraph repeated on-screen). `doencaId` is always submitted as `null` —
+ * there is no backend endpoint this app can use to look one up (see
+ * consultaService.ts).
+ *
+ * No card wrap — this renders as a plain, centered form directly on the
+ * screen background (the AppHeader title above already says "Conclusão do
+ * veterinário", so this never repeats it).
  */
 export function VeterinarianConclusionForm({ onSubmit, isSubmitting, errorMessage }: Props) {
   const colors = useThemeColors();
@@ -52,57 +58,73 @@ export function VeterinarianConclusionForm({ onSubmit, isSubmitting, errorMessag
   };
 
   return (
-    <AppCard>
-      <Text style={[styles.title, { color: colors.primary }]}>Conclusão do veterinário</Text>
-      <Text style={[styles.disclaimer, { color: colors.textSecondary }]}>
-        Registre sua avaliação e decisão clínica final. Esta conclusão é independente do apoio de
-        IA acima — nada é preenchido automaticamente.
+    <View style={styles.root}>
+      <Text style={[styles.intro, { color: colors.textSecondary }]}>
+        Registre sua decisão clínica final.
       </Text>
 
-      <AppInput
-        label="Diagnóstico"
-        placeholder="Diagnóstico definido pelo veterinário"
-        value={diagnostico}
-        onChangeText={setDiagnostico}
-        editable={!isSubmitting}
-        multiline
-      />
-
-      <Text style={[styles.label, { color: colors.text }]}>Severidade</Text>
-      <View style={styles.chipRow}>
-        {SEVERIDADE_OPTIONS.map((option) => (
-          <Pressable
-            key={option.value}
-            disabled={isSubmitting}
-            onPress={() => setSeveridade(option.value)}
-            style={[
-              styles.chip,
-              {
-                backgroundColor: severidade === option.value ? colors.primary : colors.surface,
-                borderColor: colors.border,
-              },
-            ]}
-          >
-            <Text style={{ color: severidade === option.value ? '#FFF' : colors.text }}>
-              {option.label}
-            </Text>
-          </Pressable>
-        ))}
+      <View style={styles.section}>
+        <Text style={[commonStyles.eyebrow, styles.sectionLabel, { color: colors.primary }]}>
+          Diagnóstico
+        </Text>
+        <AppInput
+          placeholder="Diagnóstico definido pelo veterinário"
+          value={diagnostico}
+          onChangeText={setDiagnostico}
+          editable={!isSubmitting}
+          multiline
+        />
       </View>
 
-      <AppInput
-        label="Conclusão clínica"
-        placeholder="Conduta, orientações e observações finais"
-        value={conclusao}
-        onChangeText={setConclusao}
-        editable={!isSubmitting}
-        multiline
-      />
+      <View style={styles.section}>
+        <Text style={[commonStyles.eyebrow, styles.sectionLabel, { color: colors.primary }]}>
+          Severidade
+        </Text>
+        <View style={styles.severityRow}>
+          {SEVERIDADE_OPTIONS.map((option) => (
+            <Pressable
+              key={option.value}
+              disabled={isSubmitting}
+              onPress={() => setSeveridade(option.value)}
+              style={[
+                styles.severityOption,
+                {
+                  backgroundColor: severidade === option.value ? colors.primary : colors.surface,
+                  borderColor: severidade === option.value ? colors.primary : colors.border,
+                },
+              ]}
+            >
+              <Text
+                numberOfLines={1}
+                style={[
+                  styles.severityLabel,
+                  { color: severidade === option.value ? '#FFFFFF' : colors.text },
+                ]}
+              >
+                {option.label}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={[commonStyles.eyebrow, styles.sectionLabel, { color: colors.primary }]}>
+          Conclusão clínica
+        </Text>
+        <AppInput
+          placeholder="Conduta, orientações e observações finais"
+          value={conclusao}
+          onChangeText={setConclusao}
+          editable={!isSubmitting}
+          multiline
+          numberOfLines={5}
+          style={styles.conclusaoInput}
+        />
+      </View>
 
       {validationError || errorMessage ? (
-        <Text style={{ color: colors.error, marginBottom: spacing.sm }}>
-          {validationError || errorMessage}
-        </Text>
+        <Text style={[styles.error, { color: colors.error }]}>{validationError || errorMessage}</Text>
       ) : null}
 
       <AppButton
@@ -110,20 +132,32 @@ export function VeterinarianConclusionForm({ onSubmit, isSubmitting, errorMessag
         onPress={handleSubmit}
         loading={isSubmitting}
         disabled={isSubmitting}
+        style={styles.submitButton}
       />
-    </AppCard>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  title: { fontSize: fontSize.md, fontWeight: '700', marginBottom: spacing.xs },
-  disclaimer: { fontSize: fontSize.xs, lineHeight: 17, marginBottom: spacing.sm },
-  label: { fontSize: fontSize.sm, fontWeight: '600', marginBottom: spacing.sm },
-  chipRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md },
-  chip: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+  root: { paddingTop: spacing.sm, paddingBottom: spacing.xl },
+  intro: { fontSize: fontSize.md, textAlign: 'center', marginBottom: spacing.xl, lineHeight: 22 },
+  // Larger gap BETWEEN sections, tighter spacing within one (the eyebrow
+  // label sits close to its own field via commonStyles.eyebrow + a small
+  // marginBottom, not the section's own rhythm).
+  section: { marginBottom: spacing.xl },
+  sectionLabel: { marginBottom: spacing.sm },
+  severityRow: { flexDirection: 'row', gap: spacing.sm },
+  severityOption: {
+    flex: 1,
+    minHeight: 44,
     borderRadius: radius.md,
-    borderWidth: 1,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.xs,
   },
+  severityLabel: { fontSize: fontSize.sm, fontWeight: '700' },
+  conclusaoInput: { minHeight: 120, textAlignVertical: 'top' },
+  error: { fontSize: fontSize.sm, textAlign: 'center', marginBottom: spacing.md },
+  submitButton: { marginTop: spacing.sm },
 });
