@@ -39,7 +39,7 @@ export interface AnimalRequestInput {
   castrado?: 'S' | 'N' | null;
 }
 
-export interface ClinicPatientFilters {
+export interface MyPatientsFilters {
   nome?: string;
   especieId?: number;
   racaId?: number;
@@ -49,7 +49,7 @@ export interface ClinicPatientFilters {
  * CONFIRMED scoped server-side: `AnimalService.listarAutorizado`'s
  * VETERINARIO branch calls `animalRepository.buscarParaVeterinario(principal.getVeterinarioId(), ...)`,
  * returning only animals linked through that veterinarian's own past
- * consultations — this is the "Já atendidos" scope, not the full clinic
+ * consultations — this is the "Já atendidos" scope, not the full patient
  * registry. `GET /api/animais` returns a Spring Data `Page`, not a bare array.
  */
 export async function listPatients(): Promise<AnimalDto[]> {
@@ -58,18 +58,28 @@ export async function listPatients(): Promise<AnimalDto[]> {
 }
 
 /**
- * CONFIRMED: `AnimalController.listarPacientesClinica` / `AnimalService.listarPacientesClinicaVeterinario`
- * — active patients belonging to the authenticated veterinarian's own
- * clinic, with NO prior-consultation requirement. This is the correct
- * source for "start a first consultation with a patient I've never seen."
+ * CONFIRMED: `AnimalController.listarMeusPacientes` (`GET /api/animais/me`)
+ * → `AnimalService.listarPacientesVeterinario`. This is the real,
+ * veterinarian-scoped patient registry the backend added — patients this
+ * veterinarian registered themselves, previously consulted, or that belong
+ * to their clinic (if they have one). `veterinarioId` is derived from the
+ * authenticated principal (never consultation history), and clinic
+ * membership is entirely optional here (`clinicaVeterinarioAutenticadoOpcional`
+ * never throws for a null clinic) — this app does not need to reproduce any
+ * of those rules, Java is the source of truth for who's "mine".
+ *
+ * Deliberately NOT `/api/animais/clinica` — audited: as of this backend
+ * change, both routes call the exact same service method with the exact
+ * same arguments, but `/me` is the correctly-named one now that "clinic"
+ * is no longer the operative concept.
  */
-export async function listClinicPatients(filters?: ClinicPatientFilters): Promise<AnimalDto[]> {
+export async function listMyPatients(filters?: MyPatientsFilters): Promise<AnimalDto[]> {
   const params = new URLSearchParams();
   if (filters?.nome) params.set('nome', filters.nome);
   if (filters?.especieId != null) params.set('especieId', String(filters.especieId));
   if (filters?.racaId != null) params.set('racaId', String(filters.racaId));
   const query = params.toString() ? `?${params.toString()}` : '';
-  const page = await apiGet<{ content: AnimalDto[] }>(`/api/animais/clinica${query}`);
+  const page = await apiGet<{ content: AnimalDto[] }>(`/api/animais/me${query}`);
   return page.content;
 }
 

@@ -7,14 +7,10 @@ import { ScreenContainer } from '../components/ScreenContainer';
 import { PatientForm } from '../components/PatientForm';
 import { useThemeColors } from '../hooks/useThemeColors';
 import { useTranslation } from '../i18n/useTranslation';
-import { useCreatePatient, useClinicPatients } from '../hooks/usePatients';
+import { useCreatePatient } from '../hooks/usePatients';
 import { describePatientError } from '../utils/errorMessages';
 import type { AnimalRequestInput } from '../services/patientService';
 import type { AppStackParamList } from '../interfaces/navigation';
-
-function normalize(value: string): string {
-  return value.trim().toLowerCase();
-}
 
 /**
  * Reachable only from NewConsultaScreen's patient search when it comes up
@@ -22,22 +18,17 @@ function normalize(value: string): string {
  * instance (still on the stack) with the new patient preselected — it does
  * not push a fresh consultation form, so motivo/date/time typed before
  * "Cadastrar novo paciente" was tapped are untouched.
+ *
+ * Deliberately no same-name warning: two patients legitimately sharing a
+ * name (e.g. "Luna") is normal and must be allowed without friction.
  */
 export function NewPatientScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
   const colors = useThemeColors();
   const { t } = useTranslation();
   const createMutation = useCreatePatient();
-  const { data: clinicPatients } = useClinicPatients();
 
-  const [nome, setNome] = useState('');
   const [error, setError] = useState('');
-
-  const duplicateWarning =
-    nome.trim().length > 1 &&
-    clinicPatients?.some((animal) => normalize(animal.nome) === normalize(nome))
-      ? t('patientForm.duplicateWarning')
-      : undefined;
 
   const handleSubmit = async (payload: AnimalRequestInput) => {
     setError('');
@@ -54,12 +45,10 @@ export function NewPatientScreen() {
       <AppHeader title={t('patientForm.newTitle')} />
       <ScreenContainer>
         <PatientForm
-          onNameChange={setNome}
           onSubmit={handleSubmit}
           submitting={createMutation.isPending}
           submitLabel={t('patientForm.createSubmit')}
           errorMessage={error}
-          duplicateWarning={duplicateWarning}
         />
       </ScreenContainer>
     </View>

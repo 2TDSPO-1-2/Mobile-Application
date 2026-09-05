@@ -3,6 +3,7 @@ import { View, Text, TextInput, StyleSheet, TextInputProps } from 'react-native'
 import { useThemeColors } from '../hooks/useThemeColors';
 import { spacing, radius, fontSize } from '../styles/theme';
 import { commonStyles } from '../styles/common';
+import type { ColorPalette } from '../styles/colors';
 
 interface Props extends TextInputProps {
   /** Omit when a heading elsewhere already labels this field — avoids a redundant/duplicate label. */
@@ -11,10 +12,21 @@ interface Props extends TextInputProps {
   helperText?: string;
   /** Overrides the label's theme-derived color — e.g. LoginScreen forcing pure black regardless of the user's dark-mode preference. */
   labelColor?: string;
+  /**
+   * Forces a specific palette instead of the app's current theme — e.g.
+   * LoginScreen passing `lightColors`, since that screen must render
+   * identically regardless of the user's dark-mode preference. Without
+   * this, only the label/text color could be forced (via `labelColor`);
+   * the input's own background/border/placeholder color always came from
+   * the live theme regardless, which is what let a dark-mode input box
+   * render inside an otherwise-forced-light card.
+   */
+  colors?: ColorPalette;
 }
 
-export function AppInput({ label, error, helperText, labelColor, style, onFocus, onBlur, editable, ...props }: Props) {
-  const colors = useThemeColors();
+export function AppInput({ label, error, helperText, labelColor, colors: colorsOverride, style, onFocus, onBlur, editable, ...props }: Props) {
+  const themeColors = useThemeColors();
+  const colors = colorsOverride ?? themeColors;
   const [focused, setFocused] = useState(false);
 
   // Typed via TextInputProps itself (not a named FocusEvent/BlurEvent import)

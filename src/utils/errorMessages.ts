@@ -178,3 +178,33 @@ export function describeConsultaPdfError(error: unknown): string {
   }
   return t('errors.pdfUnavailable');
 }
+
+/**
+ * Translates a `POST /api/auth/change-password` failure. Confirmed against
+ * `PasswordLifecycleService`/`PasswordPolicy.java`: a policy violation (too
+ * short, missing uppercase/lowercase/digit, confirmation mismatch) throws a
+ * `BusinessException` — HTTP 400 with an already specific, human-readable
+ * message (e.g. "A senha deve conter pelo menos uma letra maiuscula.") —
+ * shown verbatim rather than replaced with a generic one, since it's
+ * genuinely actionable. A 401 here means the currently-stored (old/temporary)
+ * Basic Auth credential itself was rejected — this endpoint has no separate
+ * "current password" field, so that's an auth problem, not a form field.
+ */
+export function describeChangePasswordError(error: unknown): string {
+  if (error instanceof ApiError) {
+    if (error.status === 400) {
+      return error.message || t('errors.passwordPolicyGeneric');
+    }
+    if (error.status === 401) {
+      return t('errors.passwordChangeInvalidCurrent');
+    }
+    if (error.status >= 500) {
+      return t('errors.passwordChangeUnavailable');
+    }
+    return t('errors.passwordChangeGeneric');
+  }
+  if (isNetworkError(error)) {
+    return t('errors.passwordChangeNetwork');
+  }
+  return t('errors.passwordChangeGeneric');
+}

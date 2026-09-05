@@ -7,6 +7,7 @@ import { useThemeColors } from '../hooks/useThemeColors';
 import { AuthStack } from './AuthStack';
 import { AppStack } from './AppStack';
 import { BackendUnavailableScreen } from '../screens/BackendUnavailableScreen';
+import { MandatoryPasswordChangeScreen } from '../screens/MandatoryPasswordChangeScreen';
 import type { RootStackParamList } from '../interfaces/navigation';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -35,6 +36,8 @@ export function RootNavigator() {
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {status === 'authenticated' ? (
           <Stack.Screen name="App" component={AppStack} />
+        ) : status === 'password-change-required' ? (
+          <Stack.Screen name="PasswordChange" component={MandatoryPasswordChangeScreen} />
         ) : (
           <Stack.Screen name="Auth" component={AuthStack} />
         )}

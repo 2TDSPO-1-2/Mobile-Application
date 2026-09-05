@@ -2,11 +2,11 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   createPatient,
   getPatientById,
-  listClinicPatients,
+  listMyPatients,
   listPatients,
   updatePatient,
   type AnimalRequestInput,
-  type ClinicPatientFilters,
+  type MyPatientsFilters,
 } from '../services/patientService';
 import { queryKeys } from '../query/queryKeys';
 
@@ -18,11 +18,11 @@ export function usePatients() {
   });
 }
 
-/** "Da clínica" — every active patient in the veterinarian's own clinic, no prior consultation required. */
-export function useClinicPatients(filters?: ClinicPatientFilters, options?: { enabled?: boolean }) {
+/** This veterinarian's own patient registry (`GET /api/animais/me`) — registered by them, previously consulted, or same-clinic if they have one; no prior-consultation requirement, no clinic requirement. */
+export function useMyPatients(filters?: MyPatientsFilters, options?: { enabled?: boolean }) {
   return useQuery({
-    queryKey: queryKeys.patients.clinic(filters),
-    queryFn: () => listClinicPatients(filters),
+    queryKey: queryKeys.patients.mine(filters),
+    queryFn: () => listMyPatients(filters),
     enabled: options?.enabled ?? true,
   });
 }
