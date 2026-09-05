@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { Ionicons } from '@expo/vector-icons';
 import { AppHeader } from '../components/AppHeader';
 import { ScreenContainer } from '../components/ScreenContainer';
 import { AppInput } from '../components/AppInput';
@@ -20,7 +21,10 @@ import type { AppStackParamList } from '../interfaces/navigation';
 import { spacing, fontSize, radius } from '../styles/theme';
 import { commonStyles } from '../styles/common';
 
-const MODALIDADES: Modalidade[] = ['PRESENCIAL', 'REMOTA'];
+const MODALIDADES: { value: Modalidade; label: string }[] = [
+  { value: 'PRESENCIAL', label: 'Presencial' },
+  { value: 'REMOTA', label: 'Remota' },
+];
 const SEARCH_DEBOUNCE_MS = 300;
 
 /**
@@ -79,11 +83,16 @@ export function NewConsultaScreen() {
   }, [searchInput]);
 
   const trimmedSearch = debouncedSearch.trim();
+  // No `enabled` gate anymore — the clinic patient list loads immediately
+  // with no `nome` filter (server-side "all active clinic patients"), and
+  // simply re-queries with the typed term once the debounce settles. Same
+  // endpoint either way (`GET /api/animais/clinica`), no client-side fake
+  // filtering, server stays the source of truth.
   const {
-    data: searchResults,
-    isPending: searchPending,
-    isError: searchError,
-  } = useClinicPatients({ nome: trimmedSearch }, { enabled: trimmedSearch.length > 0 });
+    data: clinicPatients,
+    isPending: patientsPending,
+    isError: patientsError,
+  } = useClinicPatients({ nome: trimmedSearch || undefined });
 
   const handleSelectAnimal = (animal: AnimalDto) => {
     setSelectedAnimal(animal);
@@ -156,19 +165,24 @@ export function NewConsultaScreen() {
           />
         ) : (
           <>
-            <Text style={[commonStyles.label, { color: colors.text }]}>Paciente</Text>
+            {/* PACIENTE */}
+            <Text style={[commonStyles.eyebrow, styles.sectionLabelFirst, { color: colors.primary }]}>
+              Paciente
+            </Text>
 
             {selectedAnimal && !changingPatient ? (
               <AppCard onPress={() => setChangingPatient(true)}>
                 <View style={commonStyles.rowBetween}>
-                  <View>
-                    <Text style={{ color: colors.text, fontWeight: '700' }}>{selectedAnimal.nome}</Text>
-                    <Text style={{ color: colors.textSecondary, fontSize: fontSize.xs }}>
+                  <View style={styles.patientTextCol}>
+                    <Text style={{ color: colors.text, fontWeight: '700' }} numberOfLines={1}>
+                      {selectedAnimal.nome}
+                    </Text>
+                    <Text style={{ color: colors.textSecondary, fontSize: fontSize.xs }} numberOfLines={1}>
                       {selectedAnimal.especieNome}
                       {selectedAnimal.racaNome ? ` · ${selectedAnimal.racaNome}` : ''}
                     </Text>
                   </View>
-                  <Text style={{ color: colors.success, fontSize: fontSize.lg, fontWeight: '700' }}>✓</Text>
+                  <Ionicons name="checkmark-circle" size={22} color={colors.success} />
                 </View>
               </AppCard>
             ) : (
@@ -179,102 +193,135 @@ export function NewConsultaScreen() {
                   placeholder="Buscar paciente da clínica..."
                 />
 
-                {trimmedSearch.length === 0 ? null : searchPending ? (
+                <Text style={[styles.subLabel, { color: colors.textSecondary }]}>
+                  {trimmedSearch ? 'Resultados da busca' : 'Pacientes da clínica'}
+                </Text>
+
+                {patientsPending ? (
                   <Text style={{ color: colors.textSecondary, marginBottom: spacing.sm }}>
-                    Buscando pacientes...
+                    Carregando pacientes...
                   </Text>
-                ) : searchError ? (
+                ) : patientsError ? (
                   <EmptyState
-                    title="Não foi possível buscar pacientes"
+                    title="Não foi possível carregar pacientes"
                     message="Verifique a conexão com o servidor e tente novamente."
                   />
-                ) : searchResults && searchResults.length > 0 ? (
-                  searchResults.map((animal) => (
-                    <Pressable
-                      key={animal.id}
-                      onPress={() => handleSelectAnimal(animal)}
-                      style={[
-                        styles.optionBtn,
-                        {
-                          backgroundColor:
-                            selectedAnimal?.id === animal.id ? colors.primaryTint : colors.surface,
-                          borderColor: colors.border,
-                        },
-                      ]}
-                    >
-                      <View>
-                        <Text
-                          style={{
-                            color: colors.text,
-                            fontWeight: selectedAnimal?.id === animal.id ? '700' : '400',
-                          }}
-                        >
-                          {animal.nome}
-                        </Text>
-                        <Text style={{ color: colors.textSecondary, fontSize: fontSize.xs }}>
-                          {animal.especieNome}
-                          {animal.racaNome ? ` · ${animal.racaNome}` : ''}
-                        </Text>
-                      </View>
-                      {selectedAnimal?.id === animal.id ? (
-                        <Text style={{ color: colors.success, fontWeight: '700' }}>✓</Text>
-                      ) : null}
-                    </Pressable>
-                  ))
+                ) : clinicPatients && clinicPatients.length > 0 ? (
+                  clinicPatients.map((animal) => {
+                    const selected = selectedAnimal?.id === animal.id;
+                    return (
+                      <Pressable
+                        key={animal.id}
+                        onPress={() => handleSelectAnimal(animal)}
+                        style={[
+                          styles.patientRow,
+                          {
+                            backgroundColor: selected ? colors.primaryTint : colors.surface,
+                            borderColor: selected ? colors.primaryLight : colors.border,
+                          },
+                        ]}
+                      >
+                        <View style={styles.patientTextCol}>
+                          <Text
+                            style={{ color: colors.text, fontWeight: selected ? '700' : '600' }}
+                            numberOfLines={1}
+                          >
+                            {animal.nome}
+                          </Text>
+                          <Text style={{ color: colors.textSecondary, fontSize: fontSize.xs }} numberOfLines={1}>
+                            {animal.especieNome}
+                            {animal.racaNome ? ` · ${animal.racaNome}` : ''}
+                          </Text>
+                        </View>
+                        <Ionicons
+                          name={selected ? 'checkmark-circle' : 'chevron-forward'}
+                          size={selected ? 22 : 18}
+                          color={selected ? colors.success : colors.textSecondary}
+                        />
+                      </Pressable>
+                    );
+                  })
+                ) : trimmedSearch.length > 0 ? (
+                  <EmptyState
+                    title="Nenhum paciente encontrado"
+                    message={`Nenhum paciente encontrado para "${trimmedSearch}".`}
+                  />
                 ) : (
-                  <Text style={{ color: colors.textSecondary, marginBottom: spacing.sm }}>
-                    Nenhum paciente encontrado com esse nome.
-                  </Text>
+                  <EmptyState
+                    title="Nenhum paciente cadastrado"
+                    message="Esta clínica ainda não possui pacientes ativos cadastrados."
+                  />
                 )}
 
-                {trimmedSearch.length > 0 && !searchPending ? (
-                  <AppButton
-                    title="+ Cadastrar novo paciente"
-                    variant="ghost"
-                    onPress={() => navigation.navigate('NovoPaciente')}
-                  />
-                ) : null}
+                <AppButton
+                  title="Cadastrar novo paciente"
+                  variant="ghost"
+                  icon="add"
+                  onPress={() => navigation.navigate('NovoPaciente')}
+                />
               </>
             )}
 
-            <Text style={[commonStyles.label, { color: colors.text, marginTop: spacing.md }]}>Modalidade</Text>
-            <View style={styles.chipRow}>
-              {MODALIDADES.map((option) => (
-                <Pressable
-                  key={option}
-                  onPress={() => setModalidade(option)}
-                  style={[
-                    styles.chip,
-                    {
-                      backgroundColor: modalidade === option ? colors.primary : colors.surface,
-                      borderColor: colors.border,
-                    },
-                  ]}
-                >
-                  <Text style={{ color: modalidade === option ? '#FFF' : colors.text }}>
-                    {option === 'PRESENCIAL' ? 'Presencial' : 'Remota'}
-                  </Text>
-                </Pressable>
-              ))}
+            {/* MODALIDADE */}
+            <Text style={[commonStyles.eyebrow, styles.sectionLabel, { color: colors.primary }]}>
+              Modalidade
+            </Text>
+            <View style={styles.segmentedRow}>
+              {MODALIDADES.map((option) => {
+                const selected = modalidade === option.value;
+                return (
+                  <Pressable
+                    key={option.value}
+                    onPress={() => setModalidade(option.value)}
+                    style={[
+                      styles.segment,
+                      {
+                        backgroundColor: selected ? colors.primary : colors.surface,
+                        borderColor: selected ? colors.primary : colors.border,
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={{
+                        color: selected ? '#FFFFFF' : colors.text,
+                        fontWeight: selected ? '700' : '600',
+                        fontSize: fontSize.md,
+                      }}
+                    >
+                      {option.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
             </View>
 
+            {/* DATA E HORÁRIO */}
+            <Text style={[commonStyles.eyebrow, styles.sectionLabel, { color: colors.primary }]}>
+              Data e horário
+            </Text>
             <DateField label="Data" value={date} onChange={setDate} />
             <TimeField label="Horário" value={time} onChange={setTime} />
+
+            {/* MOTIVO */}
+            <Text style={[commonStyles.eyebrow, styles.sectionLabel, { color: colors.primary }]}>
+              Motivo
+            </Text>
             <AppInput
-              label="Motivo"
+              label="Descrição"
               placeholder="Descreva o motivo da consulta"
               value={motivo}
               onChangeText={setMotivo}
               multiline
             />
 
-            {error ? <Text style={{ color: colors.error }}>{error}</Text> : null}
+            {error ? <Text style={{ color: colors.error, marginBottom: spacing.sm }}>{error}</Text> : null}
 
             <AppButton
               title="Criar consulta"
               onPress={handleSave}
               loading={createMutation.isPending}
               disabled={createMutation.isPending || formDisabled}
+              style={styles.submitButton}
             />
           </>
         )}
@@ -285,15 +332,32 @@ export function NewConsultaScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  chipRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md },
-  chip: { paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: radius.md, borderWidth: 1 },
-  optionBtn: {
+  // Tighter spacing within a section (label -> its controls), noticeably
+  // larger spacing between sections — the "browser form" feel came from
+  // every label/control using the same uniform gap regardless of grouping.
+  sectionLabelFirst: { marginBottom: spacing.sm },
+  sectionLabel: { marginTop: spacing.xl, marginBottom: spacing.sm },
+  subLabel: { fontSize: fontSize.xs, fontWeight: '600', marginBottom: spacing.xs, marginTop: spacing.xs },
+  patientTextCol: { flexShrink: 1, marginRight: spacing.sm },
+  patientRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: spacing.md,
+    minHeight: 56,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
     borderRadius: radius.md,
     borderWidth: 1,
     marginBottom: spacing.xs,
   },
+  segmentedRow: { flexDirection: 'row', gap: spacing.sm },
+  segment: {
+    flex: 1,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radius.md,
+    borderWidth: 1.5,
+  },
+  submitButton: { marginTop: spacing.xl },
 });
