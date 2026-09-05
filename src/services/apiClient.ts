@@ -25,6 +25,19 @@ export function isNetworkError(error: unknown): boolean {
   return error instanceof NetworkError || error instanceof TypeError;
 }
 
+/**
+ * True for infrastructure hiccups (cold engine, network blip) that are safe
+ * to retry automatically — 500/502/503/504 and any network-level failure.
+ * Never true for auth/validation/not-found errors (400/401/403/404/422),
+ * which need the caller's attention instead of a silent retry.
+ */
+export function isTransientInfraError(error: unknown): boolean {
+  if (error instanceof ApiError) {
+    return error.status === 500 || error.status === 502 || error.status === 503 || error.status === 504;
+  }
+  return isNetworkError(error);
+}
+
 function buildBasicAuthHeader({ username, password }: StoredCredentials): string {
   return `Basic ${encodeBase64(`${username}:${password}`)}`;
 }

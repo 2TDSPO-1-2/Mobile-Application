@@ -194,8 +194,9 @@ export async function getClinicalSupport(id: number): Promise<ClinicalSupportRes
  * on every response DTO is `transcricao` — not a naming mismatch, two
  * different DTOs for two different directions).
  *
- * Only ever call this from useConsultaWorkflow.ts, awaited to completion,
- * before requestClinicalSupport — never in parallel with it.
+ * Only ever call this via useSaveNarrativa from ConsultaDetailScreen's
+ * handleAnalyze, awaited to completion before ever navigating to the
+ * screen that calls requestClinicalSupport — never in parallel with it.
  */
 export async function updateNarrativa(
   id: number,

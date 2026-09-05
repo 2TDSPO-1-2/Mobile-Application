@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Alert } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -8,36 +8,44 @@ import { AppCard } from '../components/AppCard';
 import { AppButton } from '../components/AppButton';
 import { StatusBadge } from '../components/StatusBadge';
 import { EmptyState } from '../components/EmptyState';
-import { ClinicalNarrativeEditor, type NarrativeStatusTone } from '../components/ClinicalNarrativeEditor';
+import { ClinicalIntake } from '../components/ClinicalIntake';
 import { ClinicalSupportCard } from '../components/ClinicalSupportCard';
-import { VeterinarianConclusionForm } from '../components/VeterinarianConclusionForm';
 import { ConfirmedDiagnosisCard } from '../components/ConfirmedDiagnosisCard';
 import { useThemeColors } from '../hooks/useThemeColors';
 import {
   useConsulta,
   useConsultaClinicalSupport,
   useDeleteConsulta,
-  useFinalizeConsulta,
+  useSaveNarrativa,
   useStartConsulta,
 } from '../hooks/useConsultas';
-import { useConsultaWorkflow } from '../hooks/useConsultaWorkflow';
 import { useConsultaDiagnosticos } from '../hooks/useDiagnosticos';
 import { findConfirmedDiagnosis } from '../services/diagnosticoService';
-import type { FinalizarConsultaRequest } from '../services/consultaService';
 import { consultaStatusPresentation } from '../utils/statusPresentation';
-import {
-  describeFinalizeError,
-  describeNarrativeSaveError,
-} from '../utils/errorMessages';
+import { describeNarrativeSaveError } from '../utils/errorMessages';
 import type { AppStackParamList } from '../interfaces/navigation';
 import { spacing, fontSize } from '../styles/theme';
 
-function formatDataHora(value: string): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString('pt-BR');
+function formatContextLine(dataHora: string, modalidade: string): string {
+  const date = new Date(dataHora);
+  if (Number.isNaN(date.getTime())) return modalidade === 'PRESENCIAL' ? 'Presencial' : 'Remota';
+  const dateLabel = date.toLocaleDateString('pt-BR');
+  const timeLabel = date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  const modalidadeLabel = modalidade === 'PRESENCIAL' ? 'Presencial' : 'Remota';
+  return `${modalidadeLabel} · ${dateLabel} · ${timeLabel}`;
 }
 
+/**
+ * Status router for a consultation:
+ * - AG/CA/FI keep the existing card-based read/action layout.
+ * - EP renders the dedicated ArkIve clinical intake experience
+ *   (`ClinicalIntake`) — no separate Save step; "Analisar com ArkIve"
+ *   persists the narrative, then (only on success) navigates to the
+ *   dedicated analysis screen, which owns generation/recovery independently.
+ * - AP redirects immediately to the dedicated insight screen — reopening a
+ *   consultation already awaiting the vet's review should never show a
+ *   recording screen again.
+ */
 export function ConsultaDetailScreen() {
   const route = useRoute<RouteProp<AppStackParamList, 'ConsultaDetalhe'>>();
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
@@ -47,38 +55,23 @@ export function ConsultaDetailScreen() {
   const { data: consulta, isPending, isError, error, refetch } = useConsulta(consultaId);
   const startMutation = useStartConsulta(consultaId);
   const deleteMutation = useDeleteConsulta();
-  const finalizeMutation = useFinalizeConsulta(consultaId);
-  const { saveNarrativa, requestClinicalSupportFromDraft, supportPhase, supportErrorMessage } =
-    useConsultaWorkflow(consultaId);
-
-  const supportEnabled = consulta?.status === 'AP' || consulta?.status === 'FI';
-  const clinicalSupport = useConsultaClinicalSupport(consultaId, { enabled: supportEnabled });
+  const saveNarrativa = useSaveNarrativa(consultaId);
 
   const diagnosticosEnabled = consulta?.status === 'FI';
   const diagnosticos = useConsultaDiagnosticos(consultaId, { enabled: diagnosticosEnabled });
   const confirmedDiagnosis = diagnosticos.data ? findConfirmedDiagnosis(diagnosticos.data) : undefined;
+  const clinicalSupport = useConsultaClinicalSupport(consultaId, { enabled: consulta?.status === 'FI' });
 
   const [actionError, setActionError] = useState('');
 
-  // Initialize the draft from the persisted narrative exactly once per
-  // consultation — never on every background refetch, so an in-progress
-  // background query never clobbers what the veterinarian is typing.
-  const [draft, setDraft] = useState('');
-  const initializedForId = useRef<number | null>(null);
-  if (consulta && initializedForId.current !== consulta.id) {
-    initializedForId.current = consulta.id;
-    setDraft(consulta.transcricao ?? '');
-  }
-
-  const handleChangeDraft = (text: string) => {
-    setDraft(text);
-    if (saveNarrativa.isError) {
-      saveNarrativa.reset();
+  // AP means the veterinarian already asked ArkIve to analyze this case —
+  // reopening it should land on the insight screen, never back on an EP-shaped
+  // recording UI.
+  useEffect(() => {
+    if (consulta?.status === 'AP') {
+      navigation.replace('InsightArkive', { consultaId });
     }
-  };
-
-  const savedBaseline = saveNarrativa.data?.transcricao ?? consulta?.transcricao ?? '';
-  const dirty = draft !== savedBaseline;
+  }, [consulta?.status, consultaId, navigation]);
 
   const handleStart = async () => {
     setActionError('');
@@ -114,24 +107,17 @@ export function ConsultaDetailScreen() {
     );
   };
 
-  const handleSaveNarrativa = () => {
-    saveNarrativa.mutate(draft);
-  };
-
-  const handleRequestSupport = async () => {
+  // The critical invariant: PATCH narrativa must complete successfully
+  // BEFORE navigating to the analysis screen (which is the only place that
+  // ever calls POST suporte-clinico). If the save rejects, this throws and
+  // ClinicalIntake shows the error inline — no navigation, no AI call.
+  const handleAnalyze = async (narrativa: string) => {
     try {
-      await requestClinicalSupportFromDraft(draft);
-    } catch {
-      // Surfaced via saveNarrativa.isError / supportPhase === 'error' below — nothing else to do here.
+      await saveNarrativa.mutateAsync(narrativa);
+    } catch (err) {
+      throw new Error(describeNarrativeSaveError(err));
     }
-  };
-
-  const handleFinalize = async (input: FinalizarConsultaRequest) => {
-    try {
-      await finalizeMutation.mutateAsync(input);
-    } catch {
-      // Surfaced via finalizeMutation.isError below.
-    }
+    navigation.navigate('AnaliseArkive', { consultaId });
   };
 
   if (isPending) {
@@ -160,27 +146,38 @@ export function ConsultaDetailScreen() {
     );
   }
 
+  // EP: the dedicated clinical intake experience — no status card, no
+  // Salvar button, no voice-language chips.
+  if (consulta.status === 'EP') {
+    return (
+      <View style={[styles.root, { backgroundColor: colors.background }]}>
+        <AppHeader title={`Consulta #${consulta.id}`} />
+        <ScreenContainer>
+          <ClinicalIntake
+            animalNome={consulta.animalNome}
+            contextLine={formatContextLine(consulta.dataHora, consulta.modalidade)}
+            motivo={consulta.motivo}
+            initialNarrativa={consulta.transcricao ?? ''}
+            onAnalyze={handleAnalyze}
+            analyzing={saveNarrativa.isPending}
+          />
+        </ScreenContainer>
+      </View>
+    );
+  }
+
+  // AP redirects (see the effect above) — render nothing while that happens.
+  if (consulta.status === 'AP') {
+    return (
+      <View style={[styles.root, { backgroundColor: colors.background }]}>
+        <AppHeader title={`Consulta #${consulta.id}`} />
+      </View>
+    );
+  }
+
   const canStart = consulta.status === 'AG';
   const canDelete = consulta.status === 'AG';
-  const isEmProgresso = consulta.status === 'EP';
-  const isAguardandoParecer = consulta.status === 'AP';
   const isFinalizada = consulta.status === 'FI';
-
-  let narrativeStatusLabel: string | undefined;
-  let narrativeStatusTone: NarrativeStatusTone = 'neutral';
-  let narrativeErrorMessage: string | undefined;
-
-  if (saveNarrativa.isPending) {
-    narrativeStatusLabel = 'Salvando...';
-    narrativeStatusTone = 'saving';
-  } else if (saveNarrativa.isError) {
-    narrativeErrorMessage = describeNarrativeSaveError(saveNarrativa.error);
-  } else if (dirty) {
-    narrativeStatusLabel = 'Alterações não salvas';
-  } else if (saveNarrativa.isSuccess) {
-    narrativeStatusLabel = 'Narrativa salva';
-    narrativeStatusTone = 'saved';
-  }
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
@@ -198,11 +195,8 @@ export function ConsultaDetailScreen() {
 
           <Text style={[styles.field, { color: colors.text }]}>Paciente: {consulta.animalNome}</Text>
           <Text style={[styles.field, { color: colors.textSecondary }]}>
-            Veterinário: {consulta.veterinarioNome}
-          </Text>
-          <Text style={[styles.field, { color: colors.textSecondary }]}>
             {consulta.modalidade === 'PRESENCIAL' ? 'Presencial' : 'Remota'} ·{' '}
-            {formatDataHora(consulta.dataHora)}
+            {new Date(consulta.dataHora).toLocaleString('pt-BR')}
           </Text>
 
           {consulta.motivo ? (
@@ -222,93 +216,15 @@ export function ConsultaDetailScreen() {
           ) : null}
         </AppCard>
 
-        {isEmProgresso ? (
-          <>
-            <ClinicalNarrativeEditor
-              value={draft}
-              onChangeText={handleChangeDraft}
-              editable={supportPhase !== 'analyzing'}
-              statusLabel={narrativeStatusLabel}
-              statusTone={narrativeStatusTone}
-              errorMessage={narrativeErrorMessage}
-            />
-
-            <AppButton
-              title="Salvar"
-              variant="outline"
-              onPress={handleSaveNarrativa}
-              loading={saveNarrativa.isPending}
-              disabled={!dirty || saveNarrativa.isPending || supportPhase === 'analyzing'}
-            />
-
-            {supportPhase === 'analyzing' ? (
-              <AppCard>
-                <Text style={{ color: colors.text, fontWeight: '700', marginBottom: spacing.xs }}>
-                  Analisando o caso clínico...
-                </Text>
-                <Text style={{ color: colors.textSecondary }}>
-                  O motor clínico pode levar alguns instantes para iniciar.
-                </Text>
-              </AppCard>
-            ) : (
-              <>
-                {supportPhase === 'error' ? (
-                  <>
-                    <Text style={{ color: colors.error, marginBottom: spacing.sm }}>
-                      {supportErrorMessage}
-                    </Text>
-                    <AppButton
-                      title="Verificar se já foi processado"
-                      variant="outline"
-                      onPress={() => refetch()}
-                    />
-                  </>
-                ) : null}
-
-                <AppButton
-                  title="Solicitar apoio clínico"
-                  onPress={handleRequestSupport}
-                  disabled={!draft.trim() || saveNarrativa.isPending}
-                />
-              </>
-            )}
-          </>
-        ) : null}
-
-        {(isAguardandoParecer || isFinalizada) && consulta.transcricao ? (
-          <AppCard>
-            <Text style={[styles.label, { color: colors.text }]}>Narrativa clínica</Text>
-            <Text style={[styles.field, { color: colors.text }]}>{consulta.transcricao}</Text>
-          </AppCard>
-        ) : null}
-
-        {isAguardandoParecer ? (
-          <>
-            {clinicalSupport.isPending ? (
-              <Text style={{ color: colors.textSecondary, marginBottom: spacing.md }}>
-                Carregando apoio clínico...
-              </Text>
-            ) : clinicalSupport.isError ? (
-              <EmptyState
-                title="Não foi possível carregar o apoio clínico"
-                message="Tente novamente em instantes."
-              />
-            ) : clinicalSupport.data ? (
-              <ClinicalSupportCard support={clinicalSupport.data} />
-            ) : null}
-
-            <VeterinarianConclusionForm
-              onSubmit={handleFinalize}
-              isSubmitting={finalizeMutation.isPending}
-              errorMessage={
-                finalizeMutation.isError ? describeFinalizeError(finalizeMutation.error) : undefined
-              }
-            />
-          </>
-        ) : null}
-
         {isFinalizada ? (
           <>
+            {consulta.transcricao ? (
+              <AppCard>
+                <Text style={[styles.label, { color: colors.text }]}>Narrativa clínica</Text>
+                <Text style={[styles.field, { color: colors.text }]}>{consulta.transcricao}</Text>
+              </AppCard>
+            ) : null}
+
             {clinicalSupport.data ? <ClinicalSupportCard support={clinicalSupport.data} /> : null}
 
             {diagnosticos.isPending ? (

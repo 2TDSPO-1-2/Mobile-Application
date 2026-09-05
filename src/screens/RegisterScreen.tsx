@@ -29,6 +29,7 @@ export function RegisterScreen() {
           source={require('../assets/branding/definitive.png')}
           style={styles.logo}
           resizeMode="contain"
+          tintColor="#000000"
         />
       </View>
 
@@ -48,7 +49,7 @@ export function RegisterScreen() {
 
 const styles = StyleSheet.create({
   hero: { alignItems: 'center', marginBottom: spacing.lg },
-  logo: { width: '70%', height: 72, tintColor: '#000000' },
+  logo: { width: '70%', height: 72 },
   title: { fontSize: fontSize.lg, fontWeight: '700', marginBottom: spacing.sm, textAlign: 'center' },
   message: {
     fontSize: fontSize.md,

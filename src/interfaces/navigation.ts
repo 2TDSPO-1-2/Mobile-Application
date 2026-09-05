@@ -19,6 +19,9 @@ export type AppStackParamList = {
   AcompanhamentoAnimal: { animalId: string };
   NovaConsulta: { animalId?: string };
   ConsultaDetalhe: { consultaId: number };
+  AnaliseArkive: { consultaId: number };
+  InsightArkive: { consultaId: number };
+  ConclusaoVeterinaria: { consultaId: number };
   CriarConsulta: { preselectedAnimal?: AnimalDto } | undefined;
   NovoPaciente: undefined;
   PacienteDetalhe: { patientId: number };

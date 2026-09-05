@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient, type UseQueryOptions } from '@tanstack/react-query';
 import { ApiError } from '../services/apiClient';
 import {
   createConsulta,
@@ -105,12 +105,26 @@ export function useStartConsulta(id: number) {
  * Read-only and explicitly confirmed safe (GET never triggers the AI
  * engine). `enabled` defaults to true but callers should gate it to
  * AP/FI consultations — no point polling this for AG/EP/CA.
+ *
+ * `retry`/`retryDelay` default to the QueryClient's own global defaults
+ * (bounded, for the common FI read-only case) but can be overridden by a
+ * caller that needs persistent auto-recovery — e.g. ArkiveInsightScreen
+ * reopening a just-analyzed consultation into a still-cold engine.
  */
-export function useConsultaClinicalSupport(id: number, options?: { enabled?: boolean }) {
+export function useConsultaClinicalSupport(
+  id: number,
+  options?: {
+    enabled?: boolean;
+    retry?: UseQueryOptions['retry'];
+    retryDelay?: UseQueryOptions['retryDelay'];
+  }
+) {
   return useQuery({
     queryKey: queryKeys.consultas.clinicalSupport(id),
     queryFn: () => getClinicalSupport(id),
     enabled: options?.enabled ?? true,
+    ...(options?.retry !== undefined ? { retry: options.retry } : {}),
+    ...(options?.retryDelay !== undefined ? { retryDelay: options.retryDelay } : {}),
   });
 }
 
@@ -119,10 +133,10 @@ export function useConsultaClinicalSupport(id: number, options?: { enabled?: boo
  * narrative doesn't appear on the list cards, so refetching the list would
  * be wasted work (see Phase 2.5's "keep invalidation precise" note).
  *
- * This mutation is meant to be used through useConsultaWorkflow.ts (both
- * the standalone "Salvar" button and the "Solicitar apoio clínico" action
- * share this exact instance in ConsultaDetailScreen, so `data`/`isPending`/
- * `isError` stay consistent regardless of which button triggered it).
+ * Called directly from ConsultaDetailScreen's `handleAnalyze` — awaited to
+ * completion before ever navigating to the analysis screen (which is the
+ * only place that calls `useRequestClinicalSupport`), preserving the
+ * save-then-generate invariant without needing a combined orchestration hook.
  */
 export function useSaveNarrativa(id: number) {
   const queryClient = useQueryClient();
@@ -163,12 +177,11 @@ export function useRequestClinicalSupport(id: number) {
 }
 
 /**
- * POST finalizar. Kept separate from useConsultaWorkflow on purpose: that
- * hook exists specifically to enforce the save-then-AI ordering invariant,
- * and finalization has no such ordering dependency on anything else — by
- * the time a consultation is AP, the narrative is already saved and AI
- * already ran. Folding an unrelated action into that hook would blur why
- * it exists. `retry: false` for the same reason as the AI mutation: this
+ * POST finalizar. Used from the dedicated VeterinarianConclusionScreen, not
+ * from the intake/analysis flow — finalization has no ordering dependency
+ * on the save-then-generate invariant those own; by the time a consultation
+ * is AP, the narrative is already saved and AI already ran. `retry: false`
+ * for the same reason as the AI mutation: this
  * must never be silently repeated.
  */
 export function useFinalizeConsulta(id: number) {

@@ -78,8 +78,12 @@ export function LoginScreen() {
           >
             <Image
               source={require('../assets/branding/definitive.png')}
-              style={[styles.logo, styles.logoTint]}
+              style={styles.logo}
               resizeMode="contain"
+              // Forces the logo artwork to pure black regardless of source-asset
+              // shading or theme — the PNG has a real alpha channel, so tintColor
+              // only recolors the glyph itself, never the transparent background.
+              tintColor="#000000"
             />
 
             <AppInput
@@ -131,20 +135,24 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
   },
   card: {
+    width: '100%',
+    maxWidth: 480,
+    alignSelf: 'center',
     borderWidth: 1,
     borderRadius: radius.lg,
     padding: spacing.lg,
   },
   logo: {
-    width: '100%',
-    height: 96,
+    // ~75% of the width of the inputs below it (same card, same padding —
+    // the inputs stretch to 100% of that content width) rather than the
+    // previous edge-to-edge stretch, with room to breathe on either side.
+    width: '75%',
+    maxWidth: 260,
+    // Real asset ratio (1356x1160) — height derives from width so the mark
+    // never crops or distorts regardless of screen size.
+    aspectRatio: 1356 / 1160,
+    alignSelf: 'center',
     marginBottom: spacing.lg,
-  },
-  // Forces the logo artwork to pure black regardless of source-asset shading
-  // or theme — the PNG has a real alpha channel, so tintColor only recolors
-  // the glyph itself, never the transparent background around it.
-  logoTint: {
-    tintColor: '#000000',
   },
   inputText: { color: '#000000' },
   error: { fontSize: fontSize.sm, textAlign: 'center', marginBottom: spacing.sm },

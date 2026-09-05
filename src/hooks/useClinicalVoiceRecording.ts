@@ -3,6 +3,7 @@ import { AppState } from 'react-native';
 import { File } from 'expo-file-system';
 import {
   useAudioRecorder,
+  useAudioRecorderState,
   RecordingPresets,
   setAudioModeAsync,
   requestRecordingPermissionsAsync,
@@ -31,7 +32,13 @@ export type VoiceRecordingStatus = 'idle' | 'recording' | 'transcribing' | 'erro
  * required for this feature.
  */
 export function useClinicalVoiceRecording(onTranscribed: (text: string) => void) {
-  const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  // `isMeteringEnabled` is the only addition to the preset — still the same
+  // `.m4a`/AAC output, same upload, same everything else. It turns on a
+  // real audio-level reading (`RecorderState.metering`, a dBFS value)
+  // surfaced below as `meteringLevel`, so the recording UI can reflect
+  // actual mic input instead of a fully decorative animation.
+  const recorder = useAudioRecorder({ ...RecordingPresets.HIGH_QUALITY, isMeteringEnabled: true });
+  const recorderState = useAudioRecorderState(recorder, 100);
   const transcribeMutation = useTranscribeAudio();
 
   const [status, setStatus] = useState<VoiceRecordingStatus>('idle');
@@ -208,12 +215,21 @@ export function useClinicalVoiceRecording(onTranscribed: (text: string) => void)
     return () => subscription.remove();
   }, [status, cancelRecording]);
 
+  // dBFS typically runs roughly -160 (silence) to 0 (peak); voice input
+  // rarely goes below about -60 in practice, so that's the clamp floor.
+  // Only meaningful while actually recording — 0 otherwise.
+  const meteringLevel =
+    status === 'recording' && typeof recorderState.metering === 'number'
+      ? Math.min(1, Math.max(0, (recorderState.metering + 60) / 60))
+      : 0;
+
   return {
     status,
     durationSeconds,
     errorMessage,
     permanentlyDenied,
     canRetry,
+    meteringLevel,
     start,
     stopAndTranscribe,
     retry,
