@@ -1,4 +1,4 @@
-import { apiGet } from './apiClient';
+import { apiGet, apiPost } from './apiClient';
 
 /** Confirmed: `RacaResponse.java`. */
 export interface RacaDto {
@@ -8,6 +8,16 @@ export interface RacaDto {
   especieId: number;
   especieNome: string;
   ativo: 'S' | 'N';
+}
+
+/** The only values `RacaService.validarPorte` accepts (blank/omitted is also valid — porte is optional). */
+export type Porte = 'PEQUENO' | 'MEDIO' | 'GRANDE';
+
+/** `RacaRequest.java` — `nome`/`especieId` required, `porte` optional. Used only for create in this app (no breed-edit UI). */
+export interface RacaRequestInput {
+  nome: string;
+  especieId: number;
+  porte?: Porte | null;
 }
 
 /**
@@ -21,4 +31,17 @@ export async function listRacas(especieId: number): Promise<RacaDto[]> {
     `/api/racas?especieId=${especieId}&size=200`
   );
   return page.content;
+}
+
+/**
+ * `POST /api/racas` — CONFIRMED VETERINARIO-allowed (`SecurityConfig`:
+ * `POST /api/racas` → `hasAnyRole("SYSADMIN", "ADMIN_CLINICA", "VETERINARIO")`),
+ * letting a vet register a missing breed inline during patient registration
+ * instead of being blocked by a closed catalog. A duplicate name within the
+ * same species returns 409 with a specific, human-readable message
+ * (`RacaService.aplicarDados`/`salvar`) — shown verbatim, like the password
+ * policy messages elsewhere in this app.
+ */
+export async function createRaca(input: RacaRequestInput): Promise<RacaDto> {
+  return apiPost<RacaDto>('/api/racas', input);
 }

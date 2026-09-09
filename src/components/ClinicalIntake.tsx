@@ -70,7 +70,12 @@ export function ClinicalIntake({
   }, [voice.permanentlyDenied]);
 
   const handleOrbPress = () => {
-    if (voice.status === 'idle') voice.start();
+    // 'error' is included here (not just 'idle') so a failed transcription
+    // never leaves the orb visually tappable but functionally dead — start()
+    // already discards any stale pending recording and clears the previous
+    // error itself, so this is a clean way to begin a brand-new recording
+    // right after a failure, without a separate reset step.
+    if (voice.status === 'idle' || voice.status === 'error') voice.start();
     else if (voice.status === 'recording') voice.stopAndTranscribe(locale);
   };
 
@@ -123,7 +128,7 @@ export function ClinicalIntake({
             onPress={handleOrbPress}
           />
 
-          {voice.status === 'idle' ? (
+          {voice.status === 'idle' || voice.status === 'error' ? (
             <Pressable onPress={() => setView('editor')} style={styles.linkWrap} accessibilityRole="button">
               <Text style={{ color: colors.primary, fontWeight: '600' }}>{t('clinicalIntake.typeNarrative')}</Text>
             </Pressable>
@@ -178,7 +183,7 @@ export function ClinicalIntake({
         </Text>
       ) : null}
 
-      {view === 'editor' && voice.status === 'idle' ? (
+      {view === 'editor' && (voice.status === 'idle' || voice.status === 'error') ? (
         <AppButton
           title={t('clinicalIntake.analyzeButton')}
           icon="sparkles"

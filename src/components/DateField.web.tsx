@@ -1,6 +1,7 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useThemeColors } from '../hooks/useThemeColors';
+import { useTranslation } from '../i18n/useTranslation';
 import { spacing, radius, fontSize } from '../styles/theme';
 import { commonStyles } from '../styles/common';
 
@@ -9,6 +10,12 @@ interface Props {
   value: Date | null;
   onChange: (date: Date) => void;
   error?: string;
+  /** Earliest selectable date (e.g. "today" for scheduling a consultation). */
+  minimumDate?: Date;
+  /** Latest selectable date (e.g. "today" for a birth date — never future). */
+  maximumDate?: Date;
+  /** Renders a small clear affordance next to the field when `value` is set — for an optional, clearable date like a patient's birth date. */
+  onClear?: () => void;
 }
 
 function toInputValue(date: Date | null): string {
@@ -26,8 +33,9 @@ function toInputValue(date: Date | null): string {
  * smallest way to get a real, ArkIve-styled date picker on Expo Web without
  * pulling in a calendar UI library.
  */
-export function DateField({ label, value, onChange, error }: Props) {
+export function DateField({ label, value, onChange, error, minimumDate, maximumDate, onClear }: Props) {
   const colors = useThemeColors();
+  const { t } = useTranslation();
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const raw = event.target.value;
@@ -43,6 +51,8 @@ export function DateField({ label, value, onChange, error }: Props) {
         type="date"
         value={toInputValue(value)}
         onChange={handleChange}
+        min={minimumDate ? toInputValue(minimumDate) : undefined}
+        max={maximumDate ? toInputValue(maximumDate) : undefined}
         style={{
           display: 'block',
           width: '100%',
@@ -58,6 +68,11 @@ export function DateField({ label, value, onChange, error }: Props) {
           boxSizing: 'border-box',
         }}
       />
+      {value && onClear ? (
+        <Pressable onPress={onClear} style={styles.clearBtn} accessibilityRole="button">
+          <Text style={{ color: colors.textSecondary, fontSize: fontSize.sm }}>{t('common.clearDate')}</Text>
+        </Pressable>
+      ) : null}
       {error ? <Text style={[commonStyles.errorText, { color: colors.error }]}>{error}</Text> : null}
     </View>
   );
@@ -65,4 +80,5 @@ export function DateField({ label, value, onChange, error }: Props) {
 
 const styles = StyleSheet.create({
   wrap: { marginBottom: spacing.sm },
+  clearBtn: { alignSelf: 'flex-start', marginTop: spacing.xs },
 });

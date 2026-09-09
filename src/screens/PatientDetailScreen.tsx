@@ -10,6 +10,8 @@ import { EmptyState } from '../components/EmptyState';
 import { useThemeColors } from '../hooks/useThemeColors';
 import { useTranslation } from '../i18n/useTranslation';
 import { usePatient } from '../hooks/usePatients';
+import { useAnimalTutores } from '../hooks/useTutores';
+import { formatAge } from '../utils/localeFormat';
 import type { AppStackParamList } from '../interfaces/navigation';
 import { spacing, fontSize } from '../styles/theme';
 import { commonStyles } from '../styles/common';
@@ -19,6 +21,12 @@ import { commonStyles } from '../styles/common';
  * that relationship doesn't exist (Animal -> Clínica, not Animal ->
  * Veterinário). No Excluir/Desativar action either: the backend forbids
  * both for VETERINARIO (`AnimalService.exigirPermissaoAdministrativaAnimal`).
+ *
+ * The one extra request this screen pays for (beyond the patient itself) is
+ * its own active tutor relationships — cheap here because it's exactly one
+ * patient, unlike a list/selector card where the same fetch per row would be
+ * an unbounded N+1 (see `patientDisplay.ts`'s note on why list cards don't
+ * show the tutor's name).
  */
 export function PatientDetailScreen() {
   const route = useRoute<RouteProp<AppStackParamList, 'PacienteDetalhe'>>();
@@ -26,6 +34,8 @@ export function PatientDetailScreen() {
   const colors = useThemeColors();
   const { t } = useTranslation();
   const { data: patient, isPending, isError, error, refetch } = usePatient(route.params.patientId);
+  const { data: tutores } = useAnimalTutores(patient?.id ?? null);
+  const currentTutor = tutores?.find((rel) => rel.principal === 'S') ?? tutores?.[0] ?? null;
 
   if (isPending) {
     return (
@@ -80,6 +90,16 @@ export function PatientDetailScreen() {
           </Text>
           <Text style={[styles.field, { color: colors.text }]}>
             {t('patientDetail.neuteredLabel', { value: patient.castrado === 'S' ? t('common.yes') : t('common.no') })}
+          </Text>
+          {patient.dataNascimento ? (
+            <Text style={[styles.field, { color: colors.text }]}>
+              {t('patientDetail.ageLabel', { value: formatAge(patient.dataNascimento) })}
+            </Text>
+          ) : null}
+          <Text style={[styles.field, { color: colors.textSecondary }]}>
+            {currentTutor
+              ? t('patientDetail.tutorLabel', { name: currentTutor.responsavelNome })
+              : t('patientDetail.tutorNone')}
           </Text>
           {patient.clinicaNome ? (
             <Text style={[styles.field, { color: colors.textSecondary }]}>

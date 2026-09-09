@@ -1,42 +1,82 @@
 import React, { useState } from 'react';
-import { View, StyleSheet } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { View, Text, Pressable, Alert, StyleSheet } from 'react-native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AppHeader } from '../components/AppHeader';
 import { ScreenContainer } from '../components/ScreenContainer';
+import { AppCard } from '../components/AppCard';
 import { PatientForm } from '../components/PatientForm';
+import { TutorSearchModal } from '../components/TutorSearchModal';
 import { useThemeColors } from '../hooks/useThemeColors';
 import { useTranslation } from '../i18n/useTranslation';
 import { useCreatePatient } from '../hooks/usePatients';
+import { useLinkTutor } from '../hooks/useTutores';
 import { describePatientError } from '../utils/errorMessages';
 import type { AnimalRequestInput } from '../services/patientService';
+import type { ResponsavelLookupDto } from '../services/responsavelService';
 import type { AppStackParamList } from '../interfaces/navigation';
+import { spacing, fontSize } from '../styles/theme';
+import { commonStyles } from '../styles/common';
 
 /**
- * Reachable only from NewConsultaScreen's patient search when it comes up
- * empty. On success, navigates back to the SAME CriarConsulta screen
- * instance (still on the stack) with the new patient preselected — it does
- * not push a fresh consultation form, so motivo/date/time typed before
- * "Cadastrar novo paciente" was tapped are untouched.
+ * Reachable both from NewConsultaScreen's patient search (when it comes up
+ * empty) and from the Patients tab's own "Cadastrar paciente" action.
+ * `route.params.returnToConsulta` tells the two apart: only the former hops
+ * back to the SAME CriarConsulta screen instance (still on the stack) with
+ * the new patient preselected, so motivo/date/time typed before "Cadastrar
+ * novo paciente" was tapped are untouched; the latter lands on the new
+ * patient's own detail screen instead — "return to a fresh consultation
+ * form" would make no sense coming from the Patients tab.
  *
  * Deliberately no same-name warning: two patients legitimately sharing a
  * name (e.g. "Luna") is normal and must be allowed without friction.
+ *
+ * Tutor linkage is a SEPARATE resource (`AnimalResponsavel`, not a field on
+ * `Animal`) — creating the patient and linking the tutor are two requests.
+ * If the first succeeds and the second fails, the patient creation is never
+ * pretended to have rolled back: the veterinarian is told exactly that
+ * ("Paciente cadastrado, mas não foi possível vincular o tutor.") and still
+ * lands on the created patient.
  */
 export function NewPatientScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
+  const route = useRoute<RouteProp<AppStackParamList, 'NovoPaciente'>>();
   const colors = useThemeColors();
   const { t } = useTranslation();
   const createMutation = useCreatePatient();
+  const linkTutorMutation = useLinkTutor();
 
   const [error, setError] = useState('');
+  const [selectedTutor, setSelectedTutor] = useState<ResponsavelLookupDto | null>(null);
+  const [tutorModalOpen, setTutorModalOpen] = useState(false);
 
   const handleSubmit = async (payload: AnimalRequestInput) => {
     setError('');
+    let created;
     try {
-      const created = await createMutation.mutateAsync(payload);
-      navigation.navigate('CriarConsulta', { preselectedAnimal: created });
+      created = await createMutation.mutateAsync(payload);
     } catch (err) {
       setError(describePatientError(err, false));
+      return;
+    }
+
+    if (selectedTutor) {
+      try {
+        await linkTutorMutation.mutateAsync({
+          animalId: created.id,
+          responsavelId: selectedTutor.id,
+          tipoVinculo: 'TUTOR_LEGAL',
+          principal: 'S',
+        });
+      } catch {
+        Alert.alert(t('tutor.linkFailedTitle'), t('tutor.linkFailedMessage'));
+      }
+    }
+
+    if (route.params?.returnToConsulta) {
+      navigation.navigate('CriarConsulta', { preselectedAnimal: created });
+    } else {
+      navigation.replace('PacienteDetalhe', { patientId: created.id });
     }
   };
 
@@ -46,11 +86,43 @@ export function NewPatientScreen() {
       <ScreenContainer>
         <PatientForm
           onSubmit={handleSubmit}
-          submitting={createMutation.isPending}
+          submitting={createMutation.isPending || linkTutorMutation.isPending}
           submitLabel={t('patientForm.createSubmit')}
           errorMessage={error}
         />
+
+        <AppCard>
+          <Text style={[commonStyles.eyebrow, { color: colors.primary, marginBottom: spacing.sm }]}>
+            {t('tutor.section')}
+          </Text>
+          {selectedTutor ? (
+            <View style={commonStyles.rowBetween}>
+              <Text
+                style={{ color: colors.text, fontWeight: '700', flexShrink: 1, marginRight: spacing.sm }}
+                numberOfLines={2}
+              >
+                {t('tutor.selected', { name: selectedTutor.nome })}
+              </Text>
+              <Pressable onPress={() => setSelectedTutor(null)} accessibilityRole="button">
+                <Text style={{ color: colors.primary, fontSize: fontSize.sm }}>{t('tutor.clear')}</Text>
+              </Pressable>
+            </View>
+          ) : (
+            <>
+              <Text style={{ color: colors.textSecondary, marginBottom: spacing.sm }}>{t('tutor.none')}</Text>
+              <Pressable onPress={() => setTutorModalOpen(true)} accessibilityRole="button">
+                <Text style={{ color: colors.primary, fontWeight: '700' }}>{t('tutor.searchButton')}</Text>
+              </Pressable>
+            </>
+          )}
+        </AppCard>
       </ScreenContainer>
+
+      <TutorSearchModal
+        visible={tutorModalOpen}
+        onClose={() => setTutorModalOpen(false)}
+        onSelect={setSelectedTutor}
+      />
     </View>
   );
 }

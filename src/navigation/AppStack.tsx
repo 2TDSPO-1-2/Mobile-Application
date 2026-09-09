@@ -25,6 +25,7 @@ import { ProfileScreen } from '../screens/ProfileScreen';
 import { SearchScreen } from '../screens/SearchScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
 import { NotificationsScreen } from '../screens/NotificationsScreen';
+import { ChangePasswordScreen } from '../screens/ChangePasswordScreen';
 import { useThemeColors } from '../hooks/useThemeColors';
 
 const Stack = createNativeStackNavigator<AppStackParamList>();
@@ -63,6 +64,7 @@ export function AppStack() {
       <Stack.Screen name="Pesquisa" component={SearchScreen} />
       <Stack.Screen name="Configuracoes" component={SettingsScreen} />
       <Stack.Screen name="Notificacoes" component={NotificationsScreen} />
+      <Stack.Screen name="AlterarSenha" component={ChangePasswordScreen} />
     </Stack.Navigator>
   );
 }

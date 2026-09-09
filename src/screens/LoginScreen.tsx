@@ -30,11 +30,12 @@ import { shadows } from '../styles/shadows';
  * than the palette's `#1F2937`, and the status bar is pinned to dark icons,
  * since dark mode was otherwise turning all three light-colored here.
  *
- * `AppInput` also gets `colors={lightColors}` explicitly — `AppInput` reads
- * the app's live theme internally for its own background/border/placeholder
+ * `AppInput`/`AppButton` also get `colors={lightColors}` explicitly — both
+ * read the app's live theme internally for their own background/border/text
  * color, so without this override those still rendered dark-mode-colored
- * (a dark input box inside this otherwise-forced-light card) even though
- * every other element on this screen was already forced light.
+ * (a dark input box, or an indigo-shifted "Entrar" button, inside this
+ * otherwise-forced-light card) even though every other element on this
+ * screen was already forced light.
  */
 export function LoginScreen() {
   const navigation =
@@ -123,7 +124,7 @@ export function LoginScreen() {
               <Text style={[styles.error, { color: colors.error }]}>{error}</Text>
             ) : null}
 
-            <AppButton title={t('auth.loginButton')} onPress={handleLogin} loading={loading} />
+            <AppButton title={t('auth.loginButton')} onPress={handleLogin} loading={loading} colors={lightColors} />
           </View>
 
           <AppButton
@@ -131,6 +132,7 @@ export function LoginScreen() {
             variant="ghost"
             onPress={() => navigation.navigate('Cadastro')}
             style={styles.registerLink}
+            colors={lightColors}
           />
         </ScrollView>
       </KeyboardAvoidingView>

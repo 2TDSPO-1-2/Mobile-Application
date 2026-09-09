@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AppHeader } from '../components/AppHeader';
@@ -38,9 +38,18 @@ export function PrescricoesScreen() {
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
-      <AppHeader title={t('prescricoesList.title')} />
+      <AppHeader
+        title={t('prescricoesList.title')}
+        actions={[
+          {
+            icon: 'add',
+            onPress: () => navigation.navigate('NovaPrescricao', { consultaId }),
+            accessibilityLabel: t('prescricoesList.newAccessibilityLabel'),
+          },
+        ]}
+      />
 
-      <ScreenContainer style={isFinalizada ? styles.contentWithPdf : undefined}>
+      <ScreenContainer>
         {consulta ? (
           <Text style={[styles.context, { color: colors.textSecondary }]}>
             {consulta.animalNome} · {toDisplayDate(consulta.dataHora.slice(0, 10))}
@@ -99,13 +108,6 @@ export function PrescricoesScreen() {
             />
           </View>
         ) : null}
-
-        <Pressable
-          style={[commonStyles.fab, { backgroundColor: colors.primary }]}
-          onPress={() => navigation.navigate('NovaPrescricao', { consultaId })}
-        >
-          <Text style={styles.fabText}>+</Text>
-        </Pressable>
       </ScreenContainer>
     </View>
   );
@@ -114,12 +116,6 @@ export function PrescricoesScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1 },
   context: { fontSize: fontSize.sm, textAlign: 'center', marginBottom: spacing.md },
-  fabText: { color: '#FFF', fontSize: 28, fontWeight: '300' },
-  // Only applied when the PDF section renders (FI) — extra bottom room so
-  // the floating "+" FAB (56px + shadow) never sits on top of the share
-  // button/helper text, and so scrolling on a small iPhone can still reach
-  // every bit of the section cleanly.
-  contentWithPdf: { paddingBottom: spacing.xxl + 56 },
   // Visually distinct from the prescription cards above — a top border and
   // extra spacing is enough separation, no card/background of its own so it
   // never reads as "just another prescription". Full-width, no fixed

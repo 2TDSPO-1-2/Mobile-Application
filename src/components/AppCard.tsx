@@ -3,6 +3,7 @@ import { View, Pressable, StyleSheet, ViewStyle } from 'react-native';
 import { useThemeColors } from '../hooks/useThemeColors';
 import { radius, spacing } from '../styles/theme';
 import { shadows } from '../styles/shadows';
+import type { ColorPalette } from '../styles/colors';
 
 interface Props {
   children: React.ReactNode;
@@ -14,10 +15,13 @@ interface Props {
    * without changing the card's neutral surface otherwise.
    */
   accentColor?: string;
+  /** Forces a specific palette instead of the app's current theme — see AppButton's note on the same prop. */
+  colors?: ColorPalette;
 }
 
-export function AppCard({ children, onPress, style, accentColor }: Props) {
-  const colors = useThemeColors();
+export function AppCard({ children, onPress, style, accentColor, colors: colorsOverride }: Props) {
+  const themeColors = useThemeColors();
+  const colors = colorsOverride ?? themeColors;
 
   const cardStyle = [
     styles.card,

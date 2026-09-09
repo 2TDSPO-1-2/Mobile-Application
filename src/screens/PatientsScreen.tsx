@@ -1,39 +1,36 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { HomeHeader } from '../components/HomeHeader';
 import { ScreenContainer } from '../components/ScreenContainer';
 import { SearchBar } from '../components/SearchBar';
 import { AppCard } from '../components/AppCard';
+import { HeaderIconButton } from '../components/HeaderIconButton';
 import { EmptyState } from '../components/EmptyState';
 import { useThemeColors } from '../hooks/useThemeColors';
 import { useTranslation } from '../i18n/useTranslation';
-import { usePatients, useMyPatients } from '../hooks/usePatients';
+import { useMyPatients } from '../hooks/usePatients';
+import { patientSummaryLine, patientFallbackId } from '../utils/patientDisplay';
 import type { AppStackParamList } from '../interfaces/navigation';
-import { spacing, fontSize, radius } from '../styles/theme';
-
-type Scope = 'clinica' | 'atendidos';
+import { spacing, fontSize } from '../styles/theme';
 
 /**
- * Two legitimate scopes now that Animal isn't veterinarian-owned:
- * "Da clínica" (GET /api/animais/clinica — the real clinic patient
- * registry, no prior consultation required) and "Já atendidos"
- * (GET /api/animais — this veterinarian's own consultation history).
- * Defaults to "Da clínica" since that's the actual clinic registry; the
- * segmented toggle keeps the old "já atendidos" view one tap away instead
- * of dropping it.
+ * One canonical list, sourced from `GET /api/animais/me` — this
+ * veterinarian's own accessible patients (registered by them, previously
+ * consulted, or same-clinic if they have one; clinic membership is entirely
+ * optional server-side). The old "Da clínica"/"Já atendidos" segmented
+ * toggle called two endpoints that no longer represent distinct concepts
+ * now that Animal isn't clinic-owned — removed rather than kept as a broken
+ * client-side approximation of an authorization split Java already owns.
  */
 export function PatientsScreen() {
   const colors = useThemeColors();
   const { t } = useTranslation();
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
-  const [scope, setScope] = useState<Scope>('clinica');
   const [search, setSearch] = useState('');
 
-  const clinicQuery = useMyPatients(undefined, { enabled: scope === 'clinica' });
-  const attendedQuery = usePatients();
-  const { data, isPending, isError, error } = scope === 'clinica' ? clinicQuery : attendedQuery;
+  const { data, isPending, isError, error } = useMyPatients();
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -46,30 +43,22 @@ export function PatientsScreen() {
     );
   }, [data, search]);
 
+  const hasSearch = search.trim().length > 0;
+
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
       <HomeHeader />
 
       <ScreenContainer>
-        <Text style={[styles.pageTitle, { color: colors.text }]}>{t('patientsList.title')}</Text>
-
-        <View style={[styles.segmented, { borderColor: colors.border }]}>
-          <Pressable
-            style={[styles.segment, scope === 'clinica' && { backgroundColor: colors.primary }]}
-            onPress={() => setScope('clinica')}
-          >
-            <Text style={{ color: scope === 'clinica' ? '#FFF' : colors.text, fontSize: fontSize.sm }}>
-              {t('patientsList.clinicScope')}
-            </Text>
-          </Pressable>
-          <Pressable
-            style={[styles.segment, scope === 'atendidos' && { backgroundColor: colors.primary }]}
-            onPress={() => setScope('atendidos')}
-          >
-            <Text style={{ color: scope === 'atendidos' ? '#FFF' : colors.text, fontSize: fontSize.sm }}>
-              {t('patientsList.attendedScope')}
-            </Text>
-          </Pressable>
+        <View style={styles.titleRow}>
+          <Text style={[styles.pageTitle, { color: colors.text }]} numberOfLines={1}>
+            {t('patientsList.title')}
+          </Text>
+          <HeaderIconButton
+            icon="person-add"
+            onPress={() => navigation.navigate('NovoPaciente')}
+            accessibilityLabel={t('patientsList.addAccessibilityLabel')}
+          />
         </View>
 
         <SearchBar value={search} onChangeText={setSearch} placeholder={t('patientsList.searchPlaceholder')} />
@@ -86,7 +75,9 @@ export function PatientsScreen() {
         ) : filtered.length === 0 ? (
           <EmptyState
             title={t('patientsList.emptyTitle')}
-            message={scope === 'clinica' ? t('patientsList.emptyClinicMessage') : t('patientsList.emptyAttendedMessage')}
+            message={hasSearch ? t('patientsList.emptySearchMessage') : t('patientsList.emptyMessage')}
+            actionLabel={hasSearch ? undefined : t('patientsList.registerButton')}
+            onAction={hasSearch ? undefined : () => navigation.navigate('NovoPaciente')}
           />
         ) : (
           filtered.map((animal) => (
@@ -95,9 +86,9 @@ export function PatientsScreen() {
               onPress={() => navigation.navigate('PacienteDetalhe', { patientId: animal.id })}
             >
               <Text style={{ color: colors.text, fontWeight: '700' }}>{animal.nome}</Text>
-              <Text style={{ color: colors.textSecondary }}>
-                {animal.especieNome}
-                {animal.racaNome ? ` · ${animal.racaNome}` : ''}
+              <Text style={{ color: colors.textSecondary }}>{patientSummaryLine(animal)}</Text>
+              <Text style={{ color: colors.textSecondary, fontSize: fontSize.xs, marginTop: spacing.xs }}>
+                {patientFallbackId(animal)}
               </Text>
             </AppCard>
           ))
@@ -109,22 +100,14 @@ export function PatientsScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
   pageTitle: {
+    flex: 1,
     fontSize: fontSize.xl,
     fontWeight: '800',
-    textAlign: 'center',
-    marginBottom: spacing.md,
-  },
-  segmented: {
-    flexDirection: 'row',
-    borderWidth: 1,
-    borderRadius: radius.md,
-    overflow: 'hidden',
-    marginBottom: spacing.md,
-  },
-  segment: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: spacing.sm,
   },
 });

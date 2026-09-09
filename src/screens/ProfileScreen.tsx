@@ -73,6 +73,13 @@ export function ProfileScreen() {
           {t('profile.editUnavailable')}
         </Text>
 
+        <Text style={[styles.sectionLabel, { color: colors.text }]}>{t('profile.securitySection')}</Text>
+        <AppButton
+          title={t('profile.changePasswordButton')}
+          variant="outline"
+          onPress={() => navigation.navigate('AlterarSenha')}
+        />
+
         <AppButton
           title={t('profile.settingsButton')}
           variant="outline"
@@ -106,5 +113,11 @@ const styles = StyleSheet.create({
     fontSize: fontSize.md,
     fontWeight: '600',
     textAlign: 'center',
+  },
+  sectionLabel: {
+    fontSize: fontSize.sm,
+    fontWeight: '700',
+    marginTop: spacing.md,
+    marginBottom: spacing.xs,
   },
 });
