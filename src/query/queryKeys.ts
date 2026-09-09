@@ -14,7 +14,6 @@ export const queryKeys = {
   },
   patients: {
     all: ['patients'] as const,
-    list: () => [...queryKeys.patients.all, 'list'] as const,
     /** `GET /api/animais/me` — this veterinarian's own patient registry (see `listMyPatients`). */
     mine: (filters?: { nome?: string; especieId?: number; racaId?: number }) =>
       [...queryKeys.patients.all, 'mine', filters ?? {}] as const,
@@ -27,6 +26,14 @@ export const queryKeys = {
   racas: {
     all: ['racas'] as const,
     byEspecie: (especieId: number) => [...queryKeys.racas.all, 'by-especie', especieId] as const,
+  },
+  responsaveis: {
+    all: ['responsaveis'] as const,
+    search: (busca: string) => [...queryKeys.responsaveis.all, 'search', busca] as const,
+  },
+  animalResponsaveis: {
+    all: ['animalResponsaveis'] as const,
+    byAnimal: (animalId: number) => [...queryKeys.animalResponsaveis.all, 'by-animal', animalId] as const,
   },
   diagnosticos: {
     all: ['diagnosticos'] as const,

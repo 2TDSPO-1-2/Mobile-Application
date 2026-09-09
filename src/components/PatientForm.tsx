@@ -3,9 +3,12 @@ import { View, Text } from 'react-native';
 import { AppInput } from './AppInput';
 import { AppButton } from './AppButton';
 import { ChipGroup } from './ChipGroup';
+import { DateField } from './DateField';
+import { CreateBreedModal } from './CreateBreedModal';
 import { useThemeColors } from '../hooks/useThemeColors';
 import { useTranslation } from '../i18n/useTranslation';
 import { useEspecies, useRacas } from '../hooks/useLookups';
+import { parseISODate, toISODateString } from '../utils/localeFormat';
 import type { AnimalRequestInput } from '../services/patientService';
 import { spacing, fontSize } from '../styles/theme';
 
@@ -15,6 +18,7 @@ export interface PatientFormValues {
   racaId: number | null;
   sexo: 'M' | 'F' | null;
   castrado: 'S' | 'N' | null;
+  dataNascimento?: string | null;
 }
 
 interface Props {
@@ -55,7 +59,11 @@ export function PatientForm({
   const [racaId, setRacaId] = useState<number | null>(initialValues?.racaId ?? null);
   const [sexo, setSexo] = useState<'M' | 'F' | null>(initialValues?.sexo ?? null);
   const [castrado, setCastrado] = useState<'S' | 'N' | null>(initialValues?.castrado ?? null);
+  const [dataNascimento, setDataNascimento] = useState<Date | null>(
+    initialValues?.dataNascimento ? parseISODate(initialValues.dataNascimento) : null
+  );
   const [validationError, setValidationError] = useState('');
+  const [breedModalOpen, setBreedModalOpen] = useState(false);
 
   const { data: especies, isPending: especiesLoading } = useEspecies();
   const { data: racas, isPending: racasLoading } = useRacas(especieId);
@@ -67,6 +75,10 @@ export function PatientForm({
   const racaOptions = useMemo(
     () => (racas ?? []).map((r) => ({ value: String(r.id), label: r.nome })),
     [racas]
+  );
+  const selectedEspecieNome = useMemo(
+    () => especies?.find((e) => e.id === especieId)?.nome ?? '',
+    [especies, especieId]
   );
 
   // Clear an incompatible breed the moment species changes — the backend
@@ -103,6 +115,13 @@ export function PatientForm({
       racaId: racaId ?? undefined,
       sexo: sexo ?? undefined,
       castrado: castrado ?? undefined,
+      // Always echoed back explicitly (current state, whatever it is) rather
+      // than only-when-set — an untouched edit re-sends the exact loaded
+      // value, and an intentional clear sends a real `null`. Backend PUT
+      // semantics treat an omitted key the same as `null` (clears the
+      // field), so "just don't include it" would be indistinguishable from
+      // "clear it" and silently wipe an untouched birth date on every edit.
+      dataNascimento: dataNascimento ? toISODateString(dataNascimento) : null,
     });
   };
 
@@ -138,6 +157,30 @@ export function PatientForm({
         }
       />
 
+      <AppButton
+        title={t('patientForm.createBreedButton')}
+        variant="ghost"
+        icon="add"
+        onPress={() => setBreedModalOpen(true)}
+        disabled={!especieId}
+      />
+      {!especieId ? (
+        <Text style={{ color: colors.textSecondary, fontSize: fontSize.xs, marginTop: -spacing.xs, marginBottom: spacing.sm }}>
+          {t('patientForm.createBreedNeedsSpecies')}
+        </Text>
+      ) : null}
+
+      <CreateBreedModal
+        visible={breedModalOpen}
+        especieId={especieId ?? 0}
+        especieNome={selectedEspecieNome}
+        onClose={() => setBreedModalOpen(false)}
+        onCreated={(created) => {
+          setRacaId(created.id);
+          setBreedModalOpen(false);
+        }}
+      />
+
       <ChipGroup label={t('patientForm.sexLabel')} options={SEXO_OPTIONS} value={sexo} onChange={(v) => setSexo(v as 'M' | 'F')} />
 
       <ChipGroup
@@ -145,6 +188,14 @@ export function PatientForm({
         options={CASTRADO_OPTIONS}
         value={castrado}
         onChange={(v) => setCastrado(v as 'S' | 'N')}
+      />
+
+      <DateField
+        label={t('patientForm.birthDateLabel')}
+        value={dataNascimento}
+        onChange={setDataNascimento}
+        maximumDate={new Date()}
+        onClear={() => setDataNascimento(null)}
       />
 
       {validationError || errorMessage ? (

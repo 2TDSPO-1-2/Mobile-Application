@@ -18,6 +18,8 @@ export interface AnimalDto {
   clinicaId: number | null;
   clinicaNome: string | null;
   ativo: 'S' | 'N';
+  /** `AnimalResponse.dataNascimento` — `YYYY-MM-DD`, confirmed nullable (Batch 2). */
+  dataNascimento: string | null;
 }
 
 /**
@@ -37,24 +39,20 @@ export interface AnimalRequestInput {
   racaId?: number | null;
   sexo?: 'M' | 'F' | null;
   castrado?: 'S' | 'N' | null;
+  /**
+   * `YYYY-MM-DD` or `null` to intentionally clear it — CONFIRMED PUT semantics
+   * (`AnimalRequest.java`): an omitted/null value clears the field on update.
+   * `PatientForm` always sends the current form value explicitly (never
+   * omits this key) so an untouched edit round-trips the existing value
+   * instead of silently wiping it.
+   */
+  dataNascimento?: string | null;
 }
 
 export interface MyPatientsFilters {
   nome?: string;
   especieId?: number;
   racaId?: number;
-}
-
-/**
- * CONFIRMED scoped server-side: `AnimalService.listarAutorizado`'s
- * VETERINARIO branch calls `animalRepository.buscarParaVeterinario(principal.getVeterinarioId(), ...)`,
- * returning only animals linked through that veterinarian's own past
- * consultations — this is the "Já atendidos" scope, not the full patient
- * registry. `GET /api/animais` returns a Spring Data `Page`, not a bare array.
- */
-export async function listPatients(): Promise<AnimalDto[]> {
-  const page = await apiGet<{ content: AnimalDto[] }>('/api/animais');
-  return page.content;
 }
 
 /**

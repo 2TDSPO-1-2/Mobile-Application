@@ -10,6 +10,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeColors } from '../hooks/useThemeColors';
 import { spacing, radius, fontSize } from '../styles/theme';
+import type { ColorPalette } from '../styles/colors';
 
 /**
  * `outline` is kept as an alias for the ArkIve "secondary" treatment
@@ -34,6 +35,8 @@ interface Props {
   accessibilityLabel?: string;
   /** Optional leading icon (Ionicons name) — e.g. a secondary action like "Cadastrar novo paciente". */
   icon?: React.ComponentProps<typeof Ionicons>['name'];
+  /** Forces a specific palette instead of the app's current theme — e.g. LoginScreen/RegisterScreen pinning `lightColors` so pre-auth screens never pick up the user's dark-mode preference. */
+  colors?: ColorPalette;
 }
 
 export function AppButton({
@@ -46,8 +49,10 @@ export function AppButton({
   style,
   accessibilityLabel,
   icon,
+  colors: colorsOverride,
 }: Props) {
-  const colors = useThemeColors();
+  const themeColors = useThemeColors();
+  const colors = colorsOverride ?? themeColors;
   const isSecondary = variant === 'secondary' || variant === 'outline';
 
   const appearance: Record<Variant, { bg: string; border?: string; text: string; pressedBg: string; pressedBorder?: string; pressedText?: string }> = {

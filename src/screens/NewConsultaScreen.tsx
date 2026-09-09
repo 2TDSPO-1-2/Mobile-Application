@@ -16,6 +16,7 @@ import { useThemeColors } from '../hooks/useThemeColors';
 import { useTranslation } from '../i18n/useTranslation';
 import { useMyPatients } from '../hooks/usePatients';
 import { useCreateConsulta } from '../hooks/useConsultas';
+import { patientSummaryLine, patientFallbackId } from '../utils/patientDisplay';
 import type { AnimalDto } from '../services/patientService';
 import type { Modalidade } from '../services/consultaService';
 import type { AppStackParamList } from '../interfaces/navigation';
@@ -39,6 +40,26 @@ function toLocalDateTimeString(date: Date, time: Date): string {
   return `${y}-${m}-${d}T${hh}:${mm}:00`;
 }
 
+/**
+ * Compares at minute precision (seconds zeroed on both sides) so a handful
+ * of seconds elapsing between picking a time and tapping "Criar consulta"
+ * never turns a value the veterinarian legitimately chose as "now" into a
+ * false rejection — the exact tolerance the task calls for, without a magic
+ * numeric buffer.
+ */
+function isScheduleInPast(date: Date, time: Date): boolean {
+  const combined = new Date(date.getFullYear(), date.getMonth(), date.getDate(), time.getHours(), time.getMinutes(), 0, 0);
+  const now = new Date();
+  const flooredNow = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), now.getMinutes(), 0, 0);
+  return combined.getTime() < flooredNow.getTime();
+}
+
+/** Today at midnight — the earliest selectable date for a new consultation. */
+function startOfToday(): Date {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+}
+
 export function NewConsultaScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
   const route = useRoute<RouteProp<AppStackParamList, 'CriarConsulta'>>();
@@ -60,7 +81,15 @@ export function NewConsultaScreen() {
   const [date, setDate] = useState<Date | null>(null);
   const [time, setTime] = useState<Date | null>(null);
   const [motivo, setMotivo] = useState('');
+  const [endereco, setEndereco] = useState('');
   const [error, setError] = useState('');
+
+  // REMOTA never carries an address — clearing it here (rather than just
+  // hiding the field) means switching PRESENCIAL -> REMOTA -> PRESENCIAL
+  // never resurrects a stale value the veterinarian can no longer see.
+  useEffect(() => {
+    if (modalidade === 'REMOTA') setEndereco('');
+  }, [modalidade]);
 
   // Returning from "Cadastrar novo paciente" pops back to this exact screen
   // instance with the new patient in params — preselect it without touching
@@ -118,6 +147,15 @@ export function NewConsultaScreen() {
       setError(t('newConsulta.errorNoReason'));
       return;
     }
+    // Re-validated here regardless of the date/time pickers' own UI
+    // constraints — the backend rejects a past `dataHora` outright, and a
+    // picker's `minimumDate` alone can't catch "date is today, but the
+    // chosen time has already passed" or a value picked minutes ago that's
+    // since slipped into the past while the form sat open.
+    if (isScheduleInPast(date, time)) {
+      setError(t('newConsulta.errorPastDateTime'));
+      return;
+    }
 
     try {
       const created = await createMutation.mutateAsync({
@@ -125,6 +163,7 @@ export function NewConsultaScreen() {
         modalidade,
         dataHora: toLocalDateTimeString(date, time),
         motivo: motivo.trim(),
+        endereco: modalidade === 'PRESENCIAL' && endereco.trim() ? endereco.trim() : undefined,
       });
 
       navigation.replace('ConsultaDetalhe', { consultaId: created.id });
@@ -151,8 +190,10 @@ export function NewConsultaScreen() {
                       {selectedAnimal.nome}
                     </Text>
                     <Text style={{ color: colors.textSecondary, fontSize: fontSize.xs }} numberOfLines={1}>
-                      {selectedAnimal.especieNome}
-                      {selectedAnimal.racaNome ? ` · ${selectedAnimal.racaNome}` : ''}
+                      {patientSummaryLine(selectedAnimal)}
+                    </Text>
+                    <Text style={{ color: colors.textSecondary, fontSize: fontSize.xs }} numberOfLines={1}>
+                      {patientFallbackId(selectedAnimal)}
                     </Text>
                   </View>
                   <Ionicons name="checkmark-circle" size={22} color={colors.success} />
@@ -202,8 +243,10 @@ export function NewConsultaScreen() {
                             {animal.nome}
                           </Text>
                           <Text style={{ color: colors.textSecondary, fontSize: fontSize.xs }} numberOfLines={1}>
-                            {animal.especieNome}
-                            {animal.racaNome ? ` · ${animal.racaNome}` : ''}
+                            {patientSummaryLine(animal)}
+                          </Text>
+                          <Text style={{ color: colors.textSecondary, fontSize: fontSize.xs }} numberOfLines={1}>
+                            {patientFallbackId(animal)}
                           </Text>
                         </View>
                         <Ionicons
@@ -230,7 +273,7 @@ export function NewConsultaScreen() {
                   title={t('newConsulta.registerNewPatient')}
                   variant="ghost"
                   icon="add"
-                  onPress={() => navigation.navigate('NovoPaciente')}
+                  onPress={() => navigation.navigate('NovoPaciente', { returnToConsulta: true })}
                 />
               </>
             )}
@@ -268,11 +311,25 @@ export function NewConsultaScreen() {
               })}
             </View>
 
+            {modalidade === 'PRESENCIAL' ? (
+              <>
+                <AppInput
+                  label={t('newConsulta.addressLabel')}
+                  placeholder={t('newConsulta.addressPlaceholder')}
+                  value={endereco}
+                  onChangeText={setEndereco}
+                />
+                <Text style={{ color: colors.textSecondary, fontSize: fontSize.xs, marginTop: -spacing.xs, marginBottom: spacing.sm }}>
+                  {t('newConsulta.addressHelper')}
+                </Text>
+              </>
+            ) : null}
+
             {/* DATA E HORÁRIO */}
             <Text style={[commonStyles.eyebrow, styles.sectionLabel, { color: colors.primary }]}>
               {t('newConsulta.dateTimeSection')}
             </Text>
-            <DateField label={t('newConsulta.dateLabel')} value={date} onChange={setDate} />
+            <DateField label={t('newConsulta.dateLabel')} value={date} onChange={setDate} minimumDate={startOfToday()} />
             <TimeField label={t('newConsulta.timeLabel')} value={time} onChange={setTime} />
 
             {/* MOTIVO */}

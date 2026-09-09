@@ -3,7 +3,7 @@ import { ActivityIndicator, View, StyleSheet } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '../hooks/useAuth';
-import { useThemeColors } from '../hooks/useThemeColors';
+import { lightColors } from '../styles/colors';
 import { AuthStack } from './AuthStack';
 import { AppStack } from './AppStack';
 import { BackendUnavailableScreen } from '../screens/BackendUnavailableScreen';
@@ -14,12 +14,18 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export function RootNavigator() {
   const { status } = useAuth();
-  const colors = useThemeColors();
 
   if (status === 'initializing') {
+    // Whether this resolves to Login (forced light) or the authenticated
+    // app (the user's real theme preference) isn't known yet — defaulting
+    // this transient spinner to light avoids a dark->light flash for the
+    // common case of a signed-out device with a previously-saved dark
+    // preference, at the cost of a brief light->dark flash for a
+    // dark-mode user staying logged in, which reads as ordinary splash
+    // behavior rather than a visible glitch.
     return (
-      <View style={[styles.loading, { backgroundColor: colors.background }]}>
-        <ActivityIndicator size="large" color={colors.primary} />
+      <View style={[styles.loading, { backgroundColor: lightColors.background }]}>
+        <ActivityIndicator size="large" color={lightColors.primary} />
       </View>
     );
   }

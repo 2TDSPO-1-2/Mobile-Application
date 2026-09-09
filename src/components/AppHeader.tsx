@@ -3,14 +3,25 @@ import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { Ionicons } from '@expo/vector-icons';
+import { HeaderIconButton } from './HeaderIconButton';
 import { useThemeColors } from '../hooks/useThemeColors';
 import { spacing, fontSize } from '../styles/theme';
 import type { AppStackParamList } from '../interfaces/navigation';
 
+export interface HeaderAction {
+  icon: React.ComponentProps<typeof Ionicons>['name'];
+  onPress: () => void;
+  accessibilityLabel: string;
+  disabled?: boolean;
+  loading?: boolean;
+}
+
 interface Props {
   title: string;
   showBack?: boolean;
-  rightAction?: { label: string; onPress: () => void };
+  /** Minimal icon-only actions (transparent background, no circle/shadow) — see `HeaderIconButton`. Rendered left-to-right in the order given. */
+  actions?: HeaderAction[];
 }
 
 /**
@@ -18,7 +29,7 @@ interface Props {
  * dark on white; back/action affordances are primary blue on white, never
  * the reverse (no solid brand-colored bar behind white text).
  */
-export function AppHeader({ title, showBack = true, rightAction }: Props) {
+export function AppHeader({ title, showBack = true, actions }: Props) {
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
   const navigation =
@@ -55,12 +66,19 @@ export function AppHeader({ title, showBack = true, rightAction }: Props) {
         <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>
           {title}
         </Text>
-        {rightAction ? (
-          <Pressable onPress={rightAction.onPress} style={styles.iconBtn}>
-            <Text style={[styles.actionText, { color: colors.primary }]}>
-              {rightAction.label}
-            </Text>
-          </Pressable>
+        {actions && actions.length > 0 ? (
+          <View style={styles.actionsRow}>
+            {actions.map((action, index) => (
+              <HeaderIconButton
+                key={index}
+                icon={action.icon}
+                onPress={action.onPress}
+                accessibilityLabel={action.accessibilityLabel}
+                disabled={action.disabled}
+                loading={action.loading}
+              />
+            ))}
+          </View>
         ) : (
           <View style={styles.iconBtn} />
         )}
@@ -94,5 +112,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   iconText: { fontSize: 24, fontWeight: '600' },
-  actionText: { fontSize: fontSize.sm, fontWeight: '700' },
+  actionsRow: { flexDirection: 'row' },
 });

@@ -56,6 +56,8 @@ export interface ConsultaDto {
   veterinarioNome: string;
   clinicaId: number | null;
   clinicaNome: string | null;
+  /** `ConsultaResponse.endereco` — Batch 2 addition, nullable. */
+  endereco: string | null;
 }
 
 /** `ConsultaWorkflowResponse.java` — same fields as ConsultaDto plus the diagnosis created by `finalizar`, when applicable. */
@@ -90,6 +92,16 @@ export interface ConsultaRequestInput {
   transcricao?: string;
   animalId: number;
   veterinarioId?: number;
+  /**
+   * `ConsultaRequest.endereco` — Batch 2 addition, max 255 chars. On CREATE,
+   * omitting/blank-ing this while `modalidade === 'PRESENCIAL'` lets the
+   * backend snapshot the veterinarian's own clinic address itself
+   * (`ConsultaService`: only when `criando`, blank, PRESENCIAL, and the vet
+   * has a clinic) — this app never duplicates that lookup client-side.
+   * `undefined`/blank is safe for create; see `UpdateConsultaInput`'s own
+   * note for why that is NOT safe on a PUT.
+   */
+  endereco?: string;
 }
 
 export type CreateConsultaInput = ConsultaRequestInput;
@@ -100,6 +112,16 @@ export type CreateConsultaInput = ConsultaRequestInput;
  * `animalId`/`veterinarioId` (and clinicaId, not exposed here) must match
  * the consultation's current values exactly — `exigirAssociacoesImutaveis`
  * returns 409 otherwise. Confirmed, but not wired to any screen this phase.
+ *
+ * CRITICAL for `endereco` specifically: the clinic-address auto-snapshot
+ * ONLY applies `criando` (create) — confirmed in `ConsultaService`, the
+ * blank-endereco fallback is gated on `criando && ...`. On a PUT, an
+ * omitted/blank `endereco` is NOT backfilled from the clinic; it simply
+ * clears the field (`vazioParaNulo(request.endereco())`). Whenever this type
+ * is ever wired to a real edit screen, the caller MUST hydrate `endereco`
+ * from the existing `ConsultaDto` and only send a different value when the
+ * veterinarian actually changed it — never omit a populated value "because
+ * the user didn't touch that field".
  */
 export type UpdateConsultaInput = ConsultaRequestInput;
 

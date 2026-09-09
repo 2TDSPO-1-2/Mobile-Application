@@ -24,7 +24,8 @@ export type AppStackParamList = {
   InsightArkive: { consultaId: number };
   ConclusaoVeterinaria: { consultaId: number };
   CriarConsulta: { preselectedAnimal?: AnimalDto } | undefined;
-  NovoPaciente: undefined;
+  /** `returnToConsulta` distinguishes "opened from NewConsultaScreen's own patient search" (post-create, hop back to CriarConsulta with the new patient preselected) from every other entry point (e.g. the Patients tab's own "Cadastrar paciente" action), which should land on the new patient's own detail screen instead. */
+  NovoPaciente: { returnToConsulta?: boolean } | undefined;
   PacienteDetalhe: { patientId: number };
   EditarPaciente: { patientId: number };
   Prescricoes: { consultaId: number };
@@ -38,6 +39,7 @@ export type AppStackParamList = {
   Pesquisa: { initialQuery?: string; initialType?: SearchFilterType } | undefined;
   Configuracoes: undefined;
   Notificacoes: undefined;
+  AlterarSenha: undefined;
 };
 
 export type SearchFilterType = 'todos' | 'animal' | 'veterinario' | 'clinica' | 'responsavel';

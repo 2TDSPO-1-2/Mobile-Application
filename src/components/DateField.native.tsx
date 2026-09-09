@@ -14,6 +14,12 @@ interface Props {
   value: Date | null;
   onChange: (date: Date) => void;
   error?: string;
+  /** Earliest selectable date (e.g. "today" for scheduling a consultation). */
+  minimumDate?: Date;
+  /** Latest selectable date (e.g. "today" for a birth date — never future). */
+  maximumDate?: Date;
+  /** Renders a small clear affordance next to the field when `value` is set — for an optional, clearable date like a patient's birth date. */
+  onClear?: () => void;
 }
 
 /**
@@ -34,23 +40,25 @@ interface Props {
  * deprecated in the installed 9.1.0 typings in favor of
  * `onValueChange`/`onDismiss`.
  */
-export function DateField({ label, value, onChange, error }: Props) {
+export function DateField({ label, value, onChange, error, minimumDate, maximumDate, onClear }: Props) {
   const colors = useThemeColors();
   const { mode } = useTheme();
   const { t, language } = useTranslation();
   const [iosOpen, setIosOpen] = useState(false);
-  const [draft, setDraft] = useState<Date>(value ?? new Date());
+  const [draft, setDraft] = useState<Date>(value ?? minimumDate ?? new Date());
 
   const openPicker = () => {
     if (Platform.OS === 'android') {
       DateTimePickerAndroid.open({
-        value: value ?? new Date(),
+        value: value ?? minimumDate ?? new Date(),
         mode: 'date',
+        minimumDate,
+        maximumDate,
         onValueChange: (_event, selected) => onChange(selected),
       });
       return;
     }
-    setDraft(value ?? new Date());
+    setDraft(value ?? minimumDate ?? new Date());
     setIosOpen(true);
   };
 
@@ -74,6 +82,11 @@ export function DateField({ label, value, onChange, error }: Props) {
         </Text>
         <CalendarGlyph color={colors.primary} />
       </Pressable>
+      {value && onClear ? (
+        <Pressable onPress={onClear} style={styles.clearBtn} accessibilityRole="button">
+          <Text style={{ color: colors.textSecondary, fontSize: fontSize.sm }}>{t('common.clearDate')}</Text>
+        </Pressable>
+      ) : null}
       {error ? <Text style={[commonStyles.errorText, { color: colors.error }]}>{error}</Text> : null}
 
       {Platform.OS === 'ios' ? (
@@ -96,6 +109,8 @@ export function DateField({ label, value, onChange, error }: Props) {
                 mode="date"
                 display="spinner"
                 locale={language}
+                minimumDate={minimumDate}
+                maximumDate={maximumDate}
                 themeVariant={mode === 'dark' ? 'dark' : 'light'}
                 textColor={colors.text}
                 style={styles.picker}
@@ -111,6 +126,7 @@ export function DateField({ label, value, onChange, error }: Props) {
 
 const styles = StyleSheet.create({
   wrap: { marginBottom: spacing.sm },
+  clearBtn: { alignSelf: 'flex-start', marginTop: spacing.xs },
   field: {
     flexDirection: 'row',
     alignItems: 'center',

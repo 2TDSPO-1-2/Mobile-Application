@@ -220,6 +220,12 @@ export function ConsultaDetailScreen() {
               {t('consultaDetail.weightLabel', { weight: consulta.peso })}
             </Text>
           ) : null}
+
+          {consulta.endereco ? (
+            <Text style={[styles.field, { color: colors.textSecondary }]}>
+              {t('consultaDetail.addressLabel', { address: consulta.endereco })}
+            </Text>
+          ) : null}
         </AppCard>
 
         {isFinalizada ? (
